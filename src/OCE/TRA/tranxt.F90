@@ -46,6 +46,9 @@ MODULE tranxt
 #if defined key_agrif
    USE agrif_oce_interp
 #endif
+   !JT for ctrl warn
+   USE lib_mpp
+   !JT for ctrl warn
 
    IMPLICIT NONE
    PRIVATE
@@ -53,6 +56,11 @@ MODULE tranxt
    PUBLIC   tra_nxt       ! routine called by step.F90
    PUBLIC   tra_nxt_fix   ! to be used in trcnxt
    PUBLIC   tra_nxt_vvl   ! to be used in trcnxt
+
+   !JT
+   INTEGER  ::   warn_1, warn_2   ! indicators for warning statement
+   INTEGER , PUBLIC ::   nn_tranxticing  ! region mean calculation
+   !JT
 
    !! * Substitutions
 #  include "vectopt_loop_substitute.h90"
@@ -89,6 +97,10 @@ CONTAINS
       !!
       INTEGER  ::   ji, jj, jk, jn   ! dummy loop indices
       REAL(wp) ::   zfact            ! local scalars
+      ! JT
+      INTEGER  ::   ios   ! dummy loop indices
+      REAL(wp) ::   zfreeze   ! local scalars
+      ! JT
       REAL(wp), ALLOCATABLE, DIMENSION(:,:,:) ::   ztrdt, ztrds
       !!----------------------------------------------------------------------
       !
@@ -98,6 +110,33 @@ CONTAINS
          IF(lwp) WRITE(numout,*)
          IF(lwp) WRITE(numout,*) 'tra_nxt : achieve the time stepping by Asselin filter and array swap'
          IF(lwp) WRITE(numout,*) '~~~~~~~'
+
+
+         
+
+          NAMELIST/nam_tranxticing/ nn_tranxticing
+
+          REWIND ( numnam_ref )              ! Read Namelist nam_diatmb in referdiatmbence namelist : TMB diagnostics
+          READ   ( numnam_ref, nam_tranxticing, IOSTAT=ios, ERR= 901 )
+901       IF( ios /= 0 ) CALL ctl_nam ( ios , 'nam_tranxticing in reference namelist' )
+
+          REWIND( numnam_cfg )              ! Namelist nam_diatmb in configuration namelist  TMB diagnostics
+          READ  ( numnam_cfg, nam_tranxticing, IOSTAT = ios, ERR = 902 )
+902       IF( ios > 0 ) CALL ctl_nam ( ios , 'nam_tranxticing in configuration namelist' )
+          IF(lwm) WRITE ( numond, nam_tranxticing )
+
+          IF(lwp) THEN                   ! Control print
+              WRITE(numout,*)
+              WRITE(numout,*) 'tra_nxt : Catching Icing'
+              WRITE(numout,*) '~~~~~~~~~~~~'
+              WRITE(numout,*) 'Namelist nam_tranxticing : catch freezing points '
+              WRITE(numout,*) 'Int switch for icing catch (0=Off; 1=Error; 2 Warn (verbose); 3 Warn (Quiet); nn_tranxticing  = ', nn_tranxticing
+          ENDIF
+      
+         
+ 
+
+
       ENDIF
 
       ! Update after tracer on domain lateral boundaries
@@ -167,7 +206,58 @@ CONTAINS
                   &          tsa(:,:,:,jp_tem), 'T', 1., tsa(:,:,:,jp_sal), 'T', 1.  )
          !
       ENDIF     
+      !JT
       !
+#if ( ! defined key_lim3 && ! defined key_lim2 && ! key_cice )
+
+      IF (nn_tranxticing .GT. 0) THEN
+        IF ( kt == nit000 ) warn_1=0 
+        warn_2=0 
+        DO jk = 1, jpkm1 
+          DO jj = 1, jpj 
+            DO ji = 1, jpi 
+              IF ( tsa(ji,jj,jk,jp_tem) .lt. 0.0 ) THEN 
+                ! calculate the freezing point
+                zfreeze = ( -0.0575_wp + 1.710523E-3 * Sqrt (Abs(tsn(ji,jj,jk,jp_sal)))   & 
+                          - 2.154996E-4 * tsn(ji,jj,jk,jp_sal) ) * tsn(ji,jj,jk,jp_sal) - 7.53E-4 * ( 10.0_wp + gdept_n(ji,jj,jk) ) 
+                IF ( tsn(ji,jj,jk,jp_tem) .lt. zfreeze ) THEN
+                    IF (nn_tranxticing .lt. 3) THEN
+                  
+                      WRITE(numout,300) ' tranxticing: ', & 
+                      &   kt,zfreeze,tsn(ji,jj,jk,jp_tem),ji,jj,jk,narea,ji-1+njmpp-1+jpjglo,jj-1+nimpp-1+jpiglo
+                      !JT &   kt,zfreeze,tsn(ji,jj,jk,jp_tem),ji,jj,jk,narea,ji-1+njmpp-1+jpjzoom,jj-1+nimpp-1+jpizoom
+
+300 FORMAT(A14,1X,I7,1X,f9.2,1X,f9.2,1X,I4,1X,I4,1X,I4,1X,I4,1X,I4,1X,I4)
+                                        
+                    ENDIF
+                    tsn(ji,jj,jk,jp_tem)=zfreeze 
+                    warn_2=1 
+                ENDIF
+              ENDIF
+            END DO
+          END DO
+        END DO
+
+
+      !CALL mpp_max('warn_1') 
+      !CALL mpp_max('warn_2') 
+      !  IF ( (warn_1 == 0) .AND. (warn_2 /= 0) ) THEN
+      !    IF(lwp) THEN
+      !    
+      !      IF (nn_tranxticing .GT. 1) CALL ctl_warn( ' tranxticing: Temperatures dropping below freezing point, ', & 
+      !                &    ' being forced to freezing point, no longer conservative' ) 
+      !                
+      !      IF (nn_tranxticing .EQ. 1) CALL ctl_stop( ' tranxticing: Temperatures dropping below freezing point, ', & 
+      !                &    ' being forced to freezing point, no longer conservative' ) 
+      !                
+      !    ENDIF
+      !    warn_1=1 
+      !  ENDIF 
+
+      ENDIF 
+#endif  
+      !JT
+      
       IF( l_trdtra .AND. ln_linssh ) THEN      ! trend of the Asselin filter (tb filtered - tb)/dt     
          zfact = 1._wp / r2dt             
          DO jk = 1, jpkm1
