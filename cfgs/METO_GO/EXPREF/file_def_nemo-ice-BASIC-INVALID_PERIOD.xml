@@ -1,0 +1,4 @@
+You can't use the standard diagnostic options with the current cycling period.
+Choose the "Custom" option, copy the file_def*.xml files that
+you want to use into the Rose app and adjust the meaning period
+accordingly. 
