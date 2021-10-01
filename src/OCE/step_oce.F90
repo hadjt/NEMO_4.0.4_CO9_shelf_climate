@@ -22,6 +22,9 @@ MODULE step_oce
    USE sbcwave         ! Wave intialisation
 
    USE traqsr          ! solar radiation penetration      (tra_qsr routine)
+   !JT
+   USE tradwl          ! POLCOMS style solar radiation    (tra_dwl routine) 
+   !JT
    USE trasbc          ! surface boundary condition       (tra_sbc routine)
    USE trabbc          ! bottom boundary condition        (tra_bbc routine)
    USE trabbl          ! bottom boundary layer            (tra_bbl routine)

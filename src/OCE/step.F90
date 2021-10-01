@@ -227,6 +227,10 @@ CONTAINS
          & ln_trainc )   CALL tra_asm_inc   ( kstp )  ! apply tracer assimilation increment
                          CALL tra_sbc       ( kstp )  ! surface boundary condition
       IF( ln_traqsr  )   CALL tra_qsr       ( kstp )  ! penetrative solar radiation qsr
+      !JT
+      IF( ln_tradwl  )   CALL tra_dwl       ( kstp )  ! Polcoms Style Short Wave Radiation 
+      !JT
+
       IF( ln_trabbc  )   CALL tra_bbc       ( kstp )  ! bottom heat flux
       IF( ln_trabbl  )   CALL tra_bbl       ( kstp )  ! advective (and/or diffusive) bottom boundary layer scheme
       IF( ln_tradmp  )   CALL tra_dmp       ( kstp )  ! internal damping trends
