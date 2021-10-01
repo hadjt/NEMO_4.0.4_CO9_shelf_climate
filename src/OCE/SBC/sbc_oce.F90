@@ -133,6 +133,9 @@ MODULE sbc_oce
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   tprecip           !: total precipitation                          [Kg/m2/s]
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   sprecip           !: solid precipitation                          [Kg/m2/s]
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   fr_i              !: ice fraction = 1 - lead fraction      (between 0 to 1)
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   pressnow          !: UKMO SHELF pressure
+   !JT REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   apgu              !: UKMO SHELF pressure forcing
+   !JT REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   apgv              !: UKMO SHELF pressure forcing
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   atm_co2           !: atmospheric pCO2                             [ppm]
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) :: xcplmask          !: coupling mask for ln_mixcpl (warning: allocated in sbccpl)
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   cloud_fra         !: cloud cover (fraction of cloud in a gridcell) [-]
@@ -181,7 +184,9 @@ CONTAINS
       ALLOCATE( tprecip(jpi,jpj) , sprecip  (jpi,jpj) , fr_i(jpi,jpj) ,   &
          &      atm_co2(jpi,jpj) , cloud_fra(jpi,jpj) ,                   &
          &      ssu_m  (jpi,jpj) , sst_m    (jpi,jpj) , frq_m(jpi,jpj) ,  &
-         &      ssv_m  (jpi,jpj) , sss_m    (jpi,jpj) , ssh_m(jpi,jpj) , STAT=ierr(4) )
+         &      ssv_m  (jpi,jpj) , sss_m    (jpi,jpj) , ssh_m(jpi,jpj) ,  &
+         &      pressnow(jpi,jpj), STAT=ierr(4) ) !JT apgu(jpi,jpj)    , apgv(jpi,jpj) ,     &
+
          !
       ALLOCATE( e3t_m(jpi,jpj) , STAT=ierr(5) )
          !
