@@ -25,7 +25,10 @@ MODULE trasbc
    USE iscplini       ! Ice sheet coupling
    USE traqsr         ! solar radiation penetration
    USE trd_oce        ! trends: ocean variables
-   USE trdtra         ! trends manager: tracers 
+   USE trdtra         ! trends manager: tracers
+   !JT
+   USE tradwl          ! solar radiation penetration (downwell method)
+   !JT
 #if defined key_asminc   
    USE asminc         ! Assimilation increment
 #endif
@@ -94,7 +97,9 @@ CONTAINS
       ENDIF
       !
 !!gm  This should be moved into sbcmod.F90 module ? (especially now that ln_traqsr is read in namsbc namelist)
-      IF( .NOT.ln_traqsr ) THEN     ! no solar radiation penetration
+      !JT
+      IF( .NOT.ln_traqsr .and. .NOT.ln_tradwl ) THEN     ! no solar radiation penetration
+      !JT
          qns(:,:) = qns(:,:) + qsr(:,:)      ! total heat flux in qns
          qsr(:,:) = 0._wp                     ! qsr set to zero
       ENDIF

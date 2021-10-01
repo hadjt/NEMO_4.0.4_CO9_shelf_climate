@@ -30,7 +30,10 @@ MODULE trc_oce
    !
    REAL(wp), PUBLIC, SAVE, ALLOCATABLE, DIMENSION(:,:,:) ::   etot3     !: light absortion coefficient
    REAL(wp), PUBLIC, SAVE, ALLOCATABLE, DIMENSION(:,:)   ::   oce_co2   !: ocean carbon flux
-
+   ! JT
+   REAL(wp), PUBLIC, SAVE, ALLOCATABLE, DIMENSION(:,:)   ::   rlambda2      !: Lambda2 for downwell version of Short wave Radiation
+   REAL(wp), PUBLIC                                      ::   rlambda       !: Lambda  for downwell version of Short wave Radiation
+   ! JT
 #if defined key_top 
    !!----------------------------------------------------------------------
    !!   'key_top'                                                 bio-model          
@@ -53,8 +56,20 @@ CONTAINS
       !!----------------------------------------------------------------------
       !!                  ***  trc_oce_alloc  ***
       !!----------------------------------------------------------------------
+      ! JT
+      INTEGER ::   ierr(1)        ! Local variables
+      !!----------------------------------------------------------------------
+      ierr(:) = 0
+      ! JT
       ALLOCATE( etot3(jpi,jpj,jpk), oce_co2(jpi,jpj), STAT=trc_oce_alloc )
+      ! JT
+      ALLOCATE( rlambda2(jpi,jpj),   STAT=ierr(1) )
+      ! JT
       IF( trc_oce_alloc /= 0 )   CALL ctl_warn('trc_oce_alloc: failed to allocate etot3 array')
+      ! JT
+      IF( trc_oce_alloc /= 0 )   CALL ctl_warn('trc_oce_alloc: failed to allocate etot3, facvol or rlambda2 array')
+      ! JT
+
       !
    END FUNCTION trc_oce_alloc
 
