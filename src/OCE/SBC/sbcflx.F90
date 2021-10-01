@@ -34,9 +34,15 @@ MODULE sbcflx
    INTEGER , PARAMETER ::   jp_qsr  = 4   ! index of solar heat file
    INTEGER , PARAMETER ::   jp_emp  = 5   ! index of evaporation-precipation file
  !!INTEGER , PARAMETER ::   jp_sfx  = 6   ! index of salt flux flux
-   INTEGER , PARAMETER ::   jpfld   = 5 !! 6 ! maximum number of files to read 
+   INTEGER , PARAMETER ::   jp_press = 6  ! index of pressure for UKMO shelf fluxes
+   INTEGER , PARAMETER ::   jpfld   = 6 !! 6 ! maximum number of files to read 
 
    TYPE(FLD), ALLOCATABLE, DIMENSION(:) ::   sf    ! structure of input fields (file informations, fields read)
+   ! JT
+   LOGICAL , PUBLIC    ::   ln_shelf_flx = .TRUE. ! UKMO SHELF specific flux flag
+   INTEGER             ::   jpfld_local   ! maximum number of files to read (locally modified depending on ln_shelf_flx) 
+   ! JT
+
 
    !! * Substitutions
 #  include "vectopt_loop_substitute.h90"
@@ -84,11 +90,22 @@ CONTAINS
       REAL(wp) ::   zrhoa  = 1.22         ! Air density kg/m3
       REAL(wp) ::   zcdrag = 1.5e-3       ! drag coefficient
       REAL(wp) ::   ztx, zty, zmod, zcoef ! temporary variables
+      ! JT
+      REAL     ::   cs                    ! UKMO SHELF: Friction co-efficient at surface
+      REAL     ::   totwindspd            ! UKMO SHELF: Magnitude of wind speed vector
+
+      REAL(wp) ::   rhoa  = 1.22         ! Air density kg/m3
+      REAL(wp) ::   cdrag = 1.5e-3       ! drag coefficient 
+      ! JT
       !!
       CHARACTER(len=100) ::  cn_dir                               ! Root directory for location of flx files
       TYPE(FLD_N), DIMENSION(jpfld) ::   slf_i                    ! array of namelist information structures
-      TYPE(FLD_N) ::   sn_utau, sn_vtau, sn_qtot, sn_qsr, sn_emp !!, sn_sfx ! informations about the fields to be read
-      NAMELIST/namsbc_flx/ cn_dir, sn_utau, sn_vtau, sn_qtot, sn_qsr, sn_emp !!, sn_sfx
+      ! JT
+      TYPE(FLD_N) ::   sn_utau, sn_vtau, sn_qtot, sn_qsr, sn_emp, sn_press !!, sn_sfx ! informations about the fields to be read
+      NAMELIST/namsbc_flx/ cn_dir, sn_utau, sn_vtau, sn_qtot, sn_qsr, sn_emp,   &
+      &                    sn_press, ln_shelf_flx
+      ! JT
+
       !!---------------------------------------------------------------------
       !
       IF( kt == nit000 ) THEN                ! First call kt=nit000  
@@ -101,6 +118,8 @@ CONTAINS
          READ  ( numnam_cfg, namsbc_flx, IOSTAT = ios, ERR = 902 )
 902      IF( ios >  0 )   CALL ctl_nam ( ios , 'namsbc_flx in configuration namelist' )
          IF(lwm) WRITE ( numond, namsbc_flx ) 
+         
+         
          !
          !                                         ! check: do we plan to use ln_dm2dc with non-daily forcing?
          IF( ln_dm2dc .AND. sn_qsr%freqh /= 24. )   &
@@ -111,16 +130,27 @@ CONTAINS
          slf_i(jp_qtot) = sn_qtot   ;   slf_i(jp_qsr ) = sn_qsr 
          slf_i(jp_emp ) = sn_emp !! ;   slf_i(jp_sfx ) = sn_sfx
          !
-         ALLOCATE( sf(jpfld), STAT=ierror )        ! set sf structure
+            ALLOCATE( sf(jpfld), STAT=ierror )        ! set sf structure
+            IF( ln_shelf_flx ) slf_i(jp_press) = sn_press
+   
+            ! define local jpfld depending on shelf_flx logical
+            IF( ln_shelf_flx ) THEN
+               jpfld_local = jpfld
+            ELSE
+               jpfld_local = jpfld-1
+            ENDIF
+            !
          IF( ierror > 0 ) THEN   
             CALL ctl_stop( 'sbc_flx: unable to allocate sf structure' )   ;   RETURN  
          ENDIF
-         DO ji= 1, jpfld
+         DO ji= 1, jpfld_local
             ALLOCATE( sf(ji)%fnow(jpi,jpj,1) )
             IF( slf_i(ji)%ln_tint ) ALLOCATE( sf(ji)%fdta(jpi,jpj,1,2) )
          END DO
          !                                         ! fill sf with slf_i and control print
          CALL fld_fill( sf, slf_i, cn_dir, 'sbc_flx', 'flux formulation for ocean surface boundary condition', 'namsbc_flx' )
+         !
+         sfx(:,:) = 0.0_wp                         ! salt flux due to freezing/melting (non-zero only if ice is present; set in limsbc(_2).F90)
          !
       ENDIF
 
@@ -131,11 +161,39 @@ CONTAINS
          IF( ln_dm2dc ) THEN   ;   qsr(:,:) = sbc_dcy( sf(jp_qsr)%fnow(:,:,1) ) * tmask(:,:,1)  ! modify now Qsr to include the diurnal cycle
          ELSE                  ;   qsr(:,:) =          sf(jp_qsr)%fnow(:,:,1)   * tmask(:,:,1)
          ENDIF
+
+            !!UKMO SHELF effect of atmospheric pressure on SSH
+            ! If using ln_apr_dyn, this is done there so don't repeat here.
+            !IF( ln_shelf_flx .AND. .NOT. ln_apr_dyn) THEN
+            !   DO jj = 1, jpjm1
+            !      DO ji = 1, jpim1
+            !         apgu(ji,jj) = (-1.0/rau0)*(sf(jp_press)%fnow(ji+1,jj,1)-sf(jp_press)%fnow(ji,jj,1))/e1u(ji,jj)
+            !         apgv(ji,jj) = (-1.0/rau0)*(sf(jp_press)%fnow(ji,jj+1,1)-sf(jp_press)%fnow(ji,jj,1))/e2v(ji,jj)
+            !      END DO
+            !   END DO
+            !ENDIF 
+
          DO jj = 1, jpj                                           ! set the ocean fluxes from read fields
             DO ji = 1, jpi
-               utau(ji,jj) =   sf(jp_utau)%fnow(ji,jj,1)                              * umask(ji,jj,1)
-               vtau(ji,jj) =   sf(jp_vtau)%fnow(ji,jj,1)                              * vmask(ji,jj,1)
-               qns (ji,jj) = ( sf(jp_qtot)%fnow(ji,jj,1) - sf(jp_qsr)%fnow(ji,jj,1) ) * tmask(ji,jj,1)
+               !JT
+               IF( ln_shelf_flx ) THEN
+                  !! UKMO SHELF - need atmospheric pressure to calculate Haney forcing
+                  pressnow(ji,jj) = sf(jp_press)%fnow(ji,jj,1)
+                  !! UKMO SHELF flux files contain wind speed not wind stress
+                  totwindspd = sqrt((sf(jp_utau)%fnow(ji,jj,1))**2.0 + (sf(jp_vtau)%fnow(ji,jj,1))**2.0)
+                  cs = 0.63 + (0.066 * totwindspd)
+                  utau(ji,jj) = (cs * (rhoa/rau0) * sf(jp_utau)%fnow(ji,jj,1) * totwindspd)* umask(ji,jj,1)
+                  vtau(ji,jj) = (cs * (rhoa/rau0) * sf(jp_vtau)%fnow(ji,jj,1) * totwindspd)* vmask(ji,jj,1)
+               ELSE
+                  utau(ji,jj) = sf(jp_utau)%fnow(ji,jj,1)* umask(ji,jj,1)
+                  vtau(ji,jj) = sf(jp_vtau)%fnow(ji,jj,1)* vmask(ji,jj,1)
+               ENDIF
+               !JT                   
+               qsr (ji,jj) = sf(jp_qsr )%fnow(ji,jj,1)                                * tmask(ji,jj,1)
+               !utau(ji,jj) =   sf(jp_utau)%fnow(ji,jj,1)                              * umask(ji,jj,1)
+               !vtau(ji,jj) =   sf(jp_vtau)%fnow(ji,jj,1)                              * vmask(ji,jj,1)
+               !JT qns (ji,jj) = ( sf(jp_qtot)%fnow(ji,jj,1) - sf(jp_qsr)%fnow(ji,jj,1) ) * tmask(ji,jj,1)
+               qns (ji,jj) = ( sf(jp_qtot)%fnow(ji,jj,1) - qsr (ji,jj)              ) * tmask(ji,jj,1)
                emp (ji,jj) =   sf(jp_emp )%fnow(ji,jj,1)                              * tmask(ji,jj,1)
                !!sfx (ji,jj) = sf(jp_sfx )%fnow(ji,jj,1)                              * tmask(ji,jj,1) 
             END DO
@@ -145,13 +203,18 @@ CONTAINS
          !!qns(:,:) = qns(:,:) - emp(:,:) * sst_m(:,:) * rcp        ! mass flux is at SST
          !
          ! clem: without these lbc calls, it seems that the northfold is not ok (true in 3.6, not sure in 4.x) 
+
+         !JT Enabling as used in previous version using these climate forcings
+         qns(:,:) = qns(:,:) - emp(:,:) * sst_m(:,:) * rcp        ! mass flux is at SST
+         !JT
+
          CALL lbc_lnk_multi( 'sbcflx', utau, 'U', -1._wp, vtau, 'V', -1._wp, &
             &                           qns, 'T',  1._wp, emp , 'T',  1._wp, qsr, 'T', 1._wp ) !! sfx, 'T', 1._wp  )
          !
          IF( nitend-nit000 <= 100 .AND. lwp ) THEN                ! control print (if less than 100 time-step asked)
             WRITE(numout,*) 
             WRITE(numout,*) '        read daily momentum, heat and freshwater fluxes OK'
-            DO jf = 1, jpfld
+            DO jf = 1, jpfld_local
                IF( jf == jp_utau .OR. jf == jp_vtau )   zfact =     1.
                IF( jf == jp_qtot .OR. jf == jp_qsr  )   zfact =     0.1
                IF( jf == jp_emp                     )   zfact = 86400.
