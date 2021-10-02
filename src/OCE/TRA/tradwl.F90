@@ -135,7 +135,8 @@ CONTAINS
 !          do i=1,iesub  ! Original Polcoms style Loop
 
         do jj=2,jpjm1
-          do ji = fs_2, fs_jpim1   ! vector opt.
+          do ji = fs_2, fs_jpim1   ! vector opt. 
+              if (tmask(ji,jj,0) == 1)  then   
 
 !             if(ipexb(i,j).ne. 0) then  (Mask, use Tmask instead)
 
@@ -152,11 +153,27 @@ CONTAINS
               rlambda2(ji,jj)=max(0.05,rlambda2(ji,jj))     ! limit in deep water
               rlambda2(ji,jj)=min(0.25,rlambda2(ji,jj))     ! Catch the infinities, from very shallow water/land. 10cm = 0.25
 
-              WRITE(*,300) 'JT tradwl:',jj,ji,njmpp,jpjglo,nimpp,jpiglo,narea, hbatt, rlambda2(ji,jj)
+              !WRITE(*,300) 'JT tradwl:',jj,ji,njmpp,jpjglo,nimpp,jpiglo,narea, hbatt, rlambda2(ji,jj)
+!300 FORMAT(A14,1X,I4,1X,I4,1X,I5,1X,I5,1X,I5,1X,I5,1X,I5,1X,f9.3,1X,f9.2)
 
 
-300 FORMAT(A14,1X,I4,1X,I4,1X,I5,1X,I5,1X,I5,1X,I5,1X,I5,1X,f9.3,1X,f9.2)
+!              WRITE(*,300) 'JT tradwl:',jj,ji,njmpp+jj,nimpp+ji,njmpp,nimpp,narea, hbatt, rlambda2(ji,jj)
+               !domain size jpjglo,,jpiglo
+               !lower lhs of each sub-domain = nimpp,njmpp
+               ! index on the global domain??? add or subtract one?? = njmpp+jj,nimpp+ji
+!300 FORMAT(A14,1X,I4,1X,I4,1X,I5,1X,I5,1X,I5,1X,I5,1X,I5,1X,f9.3,1X,f9.2)
 
+
+!              if (kt == 1) WRITE(*,300) 'JT tradwl:',njmpp+jj,nimpp+ji, hbatt, rlambda2(ji,jj)
+               !domain size jpjglo,,jpiglo
+               !lower lhs of each sub-domain = nimpp,njmpp
+               ! index on the global domain??? add or subtract one?? = njmpp+jj,nimpp+ji
+!300 FORMAT(A14,1X,I4,1X,I4,1X,f9.3,1X,f9.2)
+
+
+            else
+                rlambda2(ji,jj)= 0.25
+            endif
           enddo ! ji
         enddo ! jj
         rlambda = 0.0
@@ -171,25 +188,27 @@ CONTAINS
          DO jj=2,jpjm1
             DO ji = fs_2, fs_jpim1   ! vector opt.
 
-!--------------------------------------------------------------------
-! Calculate change in temperature
-!--------------------------------------------------------------------
-!
-!        rad0 = hfl_in(i,j)   ! change hfl_in to qsr I assume
+              if (tmask(ji,jj,0) == 1)  then   
+    !--------------------------------------------------------------------
+    ! Calculate change in temperature
+    !--------------------------------------------------------------------
+    !
+    !        rad0 = hfl_in(i,j)   ! change hfl_in to qsr I assume
 
-                rad0 = qsr(ji,jj)
-                rD = rLambda2(ji,jj)  +rLambda      !  Transmissivity to be used here
-!       if rlambda 0 then rlambda2 not zer and vica versa 
+                    rad0 = qsr(ji,jj)
+                    rD = rLambda2(ji,jj)  +rLambda      !  Transmissivity to be used here
+    !       if rlambda 0 then rlambda2 not zer and vica versa 
 
-                z2=gdepw_0(ji,jj,jk-1)    ! grid box is from z=z1 to z=z2
-                z1=gdepw_0(ji,jj,jk)
+                    z2=gdepw_0(ji,jj,jk-1)    ! grid box is from z=z1 to z=z2
+                    z1=gdepw_0(ji,jj,jk)
 
-                Rad2=Rad0*(exp(-z2*rD)) ! radiation entering box
-                Rad1=Rad0*(exp(-z1*rD)) ! radiation leaving box
+                    Rad2=Rad0*(exp(-z2*rD)) ! radiation entering box
+                    Rad1=Rad0*(exp(-z1*rD)) ! radiation leaving box
 
 
-                dtmp(jk)=1.0/(e3t_0(ji,jj,jk))*(Rad2-Rad1) !change in temperature
-                tsa(ji,jj,jk,jp_tem) = tsa(ji,jj,jk,jp_tem) + dtmp(jk)
+                    dtmp(jk)=1.0/(e3t_0(ji,jj,jk))*(Rad2-Rad1) !change in temperature
+                    tsa(ji,jj,jk,jp_tem) = tsa(ji,jj,jk,jp_tem) + dtmp(jk)
+                endif
             enddo  ! ji
          enddo  ! jj
       enddo !jk
