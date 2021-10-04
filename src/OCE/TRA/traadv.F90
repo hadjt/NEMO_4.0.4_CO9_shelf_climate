@@ -131,6 +131,10 @@ CONTAINS
       CALL iom_put( "uocetr_eff", zun )                                        ! output effective transport      
       CALL iom_put( "vocetr_eff", zvn )
       CALL iom_put( "wocetr_eff", zwn )
+      !JT
+      CALL iom_put( "uocetr_eff_zint", sum(zun*umask, dim=3 ))          ! output effective transport depth sum     
+      CALL iom_put( "vocetr_eff_zint", sum(zvn*vmask, dim=3 ))
+      !JT
       !
 !!gm ???
       IF( ln_diaptr )   CALL dia_ptr( zvn )                                    ! diagnose the effective MSF 
