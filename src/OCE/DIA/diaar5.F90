@@ -33,6 +33,9 @@ MODULE diaar5
    REAL(wp)                         ::   area_tot     ! total ocean surface (interior domain)
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:  ) ::   thick0       ! ocean thickness (interior domain)
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   sn0          ! initial salinity
+   !JT
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   tn0          ! initial temperature
+   !JT
 
    LOGICAL  :: l_ar5
       
@@ -53,9 +56,14 @@ CONTAINS
       !!----------------------------------------------------------------------
       !
       ALLOCATE( thick0(jpi,jpj) , sn0(jpi,jpj,jpk) , STAT=dia_ar5_alloc )
-      !
       CALL mpp_sum ( 'diaar5', dia_ar5_alloc )
       IF( dia_ar5_alloc /= 0 )   CALL ctl_stop( 'STOP', 'dia_ar5_alloc: failed to allocate arrays' )
+
+      !JT
+      ALLOCATE( tn0(jpi,jpj,jpk) , STAT=dia_ar5_alloc )
+      CALL mpp_sum ( 'diaar5', dia_ar5_alloc )
+      IF( dia_ar5_alloc /= 0 )   CALL ctl_stop( 'STOP', 'dia_ar5_alloc: failed to allocate Temp arrays' )
+      !JT
       !
    END FUNCTION dia_ar5_alloc
 
@@ -124,7 +132,8 @@ CONTAINS
          !
       ENDIF
 
-      IF( iom_use( 'botpres' ) .OR. iom_use( 'sshthster' )  .OR. iom_use( 'sshsteric' )  ) THEN    
+      IF( iom_use( 'botpres' ) .OR. iom_use( 'sshthster' )  .OR. iom_use( 'sshhlster' )  .OR. iom_use( 'sshsteric' ) .OR. &
+         &  iom_use( 'sshthster_mat' )  .OR. iom_use( 'sshhlster_mat' )  .OR. iom_use( 'sshsteric_mat' )  ) THEN    
          !                     
          ztsn(:,:,:,jp_tem) = tsn(:,:,:,jp_tem)                    ! thermosteric ssh
          ztsn(:,:,:,jp_sal) = sn0(:,:,:)
@@ -153,6 +162,55 @@ CONTAINS
          zarho = glob_sum( 'diaar5', e1e2t(:,:) * zbotpres(:,:) ) 
          zssh_steric = - zarho / area_tot
          CALL iom_put( 'sshthster', zssh_steric )
+         CALL iom_put( 'sshthster_mat', -zbotpres(:,:) )
+
+
+
+         !JT
+
+  
+         !                     
+         ztsn(:,:,:,jp_tem) = tn0(:,:,:)                    ! halosteric ssh
+         ztsn(:,:,:,jp_sal) = tsn(:,:,:,jp_sal)                    
+         CALL eos( ztsn, zrhd, gdept_n(:,:,:) )                       ! now in situ density using initial salinity
+         !
+         zbotpres(:,:) = 0._wp                        ! no atmospheric surface pressure, levitating sea-ice
+         DO jk = 1, jpkm1
+            zbotpres(:,:) = zbotpres(:,:) + e3t_n(:,:,jk) * zrhd(:,:,jk)
+         END DO
+         IF( ln_linssh ) THEN
+            IF( ln_isfcav ) THEN
+               DO ji = 1, jpi
+                  DO jj = 1, jpj
+                     iks = mikt(ji,jj)
+                     zbotpres(ji,jj) = zbotpres(ji,jj) + sshn(ji,jj) * zrhd(ji,jj,iks) + riceload(ji,jj)
+                  END DO
+               END DO
+            ELSE
+               zbotpres(:,:) = zbotpres(:,:) + sshn(:,:) * zrhd(:,:,1)
+            END IF
+!!gm
+!!gm   riceload should be added in both ln_linssh=T or F, no?
+!!gm
+         END IF
+         !                                         
+         zarho = glob_sum( 'diaar5', e1e2t(:,:) * zbotpres(:,:) ) 
+         zssh_steric = - zarho / area_tot
+         CALL iom_put( 'sshhlster', zssh_steric )
+         CALL iom_put( 'sshhlster_mat', -zbotpres(:,:) )
+
+         !JT
+
+
+
+
+
+
+
+
+
+
+
       
          !                                         ! steric sea surface height
          zbotpres(:,:) = 0._wp                        ! no atmospheric surface pressure, levitating sea-ice
@@ -175,6 +233,7 @@ CONTAINS
          zarho = glob_sum( 'diaar5', e1e2t(:,:) * zbotpres(:,:) ) 
          zssh_steric = - zarho / area_tot
          CALL iom_put( 'sshsteric', zssh_steric )
+         CALL iom_put( 'sshsteric_mat', - zbotpres(:,:) )
          !                                         ! ocean bottom pressure
          zztmp = rau0 * grav * 1.e-4_wp               ! recover pressure from pressure anomaly and cover to dbar = 1.e4 Pa
          zbotpres(:,:) = zztmp * ( zbotpres(:,:) + sshn(:,:) + thick0(:,:) )
@@ -380,7 +439,22 @@ CONTAINS
       INTEGER  ::   ji, jj, jk  ! dummy loop indices
       REAL(wp) ::   zztmp  
       REAL(wp), ALLOCATABLE, DIMENSION(:,:,:,:) ::   zsaldta   ! Jan/Dec levitus salinity
+      !JT
+      REAL(wp), ALLOCATABLE, DIMENSION(:,:,:,:) ::   ztemdta   ! Jan/Dec levitus salinity
+      !JT
       REAL(wp), ALLOCATABLE, DIMENSION(:,:)     ::   zvol0     
+
+
+      !JT
+      !                                  !!* namtsd  namelist : Temperature & Salinity Data *
+      LOGICAL ::   ln_tsd_init   !: T & S data flag
+      LOGICAL ::   ln_tsd_dmp    !: internal damping toward input data flag
+      INTEGER ::   ios, ierr0, ierr1, ierr2, ierr3   ! local integers
+
+      CHARACTER(len=100)            ::   cn_dir          ! Root directory for location of ssr files
+      ! TYPE(FLD_N), DIMENSION( jpts) ::   slf_i           ! array of namelist informations on the fields to read
+      TYPE(FLD_N)                   ::   sn_tem, sn_sal
+      !JT
       !
       !!----------------------------------------------------------------------
       !
@@ -388,7 +462,8 @@ CONTAINS
       IF(   iom_use( 'voltot'  ) .OR. iom_use( 'sshtot'    )  .OR. iom_use( 'sshdyn' )  .OR.  & 
          &  iom_use( 'masstot' ) .OR. iom_use( 'temptot'   )  .OR. iom_use( 'saltot' ) .OR.  &    
          &  iom_use( 'botpres' ) .OR. iom_use( 'sshthster' )  .OR. iom_use( 'sshsteric' ) .OR. &
-         &  iom_use( 'rhop' )  ) L_ar5 = .TRUE.
+         &  iom_use( 'rhop' )    .OR. iom_use( 'sshhlster' )  .OR. &
+         &  iom_use( 'sshthster_mat' )  .OR. iom_use( 'sshsteric_mat' ) .OR. iom_use( 'sshhlster_mat' )   ) L_ar5 = .TRUE.
   
       IF( l_ar5 ) THEN
          !
@@ -412,31 +487,89 @@ CONTAINS
          vol0 = glob_sum( 'diaar5', zvol0 )
          DEALLOCATE( zvol0 )
 
-         IF( iom_use( 'sshthster' ) ) THEN
-            ALLOCATE( zsaldta(jpi,jpj,jpk,jpts) )
-            CALL iom_open ( 'sali_ref_clim_monthly', inum )
-            CALL iom_get  ( inum, jpdom_data, 'vosaline' , zsaldta(:,:,:,1), 1  )
-            CALL iom_get  ( inum, jpdom_data, 'vosaline' , zsaldta(:,:,:,2), 12 )
-            CALL iom_close( inum )
+         !JT
+         IF( iom_use( 'sshthster' ) .OR. iom_use( 'sshthster_mat' ) .OR. & 
+            & iom_use( 'sshhlster' ) .OR. iom_use( 'sshhlster_mat' )  ) THEN
 
-            sn0(:,:,:) = 0.5_wp * ( zsaldta(:,:,:,1) + zsaldta(:,:,:,2) )        
-            sn0(:,:,:) = sn0(:,:,:) * tmask(:,:,:)
-            IF( ln_zps ) THEN               ! z-coord. partial steps
-               DO jj = 1, jpj               ! interpolation of salinity at the last ocean level (i.e. the partial step)
-                  DO ji = 1, jpi
-                     ik = mbkt(ji,jj)
-                     IF( ik > 1 ) THEN
-                        zztmp = ( gdept_1d(ik) - gdept_0(ji,jj,ik) ) / ( gdept_1d(ik) - gdept_1d(ik-1) )
-                        sn0(ji,jj,ik) = ( 1._wp - zztmp ) * sn0(ji,jj,ik) + zztmp * sn0(ji,jj,ik-1)
-                     ENDIF
-                  END DO
-               END DO
-            ENDIF
+            NAMELIST/namtsd/   ln_tsd_init, ln_tsd_dmp, cn_dir, sn_tem, sn_sal
+            !!----------------------------------------------------------------------
             !
-            DEALLOCATE( zsaldta )
-         ENDIF
-         !
+            !  Initialisation
+            ierr0 = 0  ;  ierr1 = 0  ;  ierr2 = 0  ;  ierr3 = 0
+            !
+            REWIND( numnam_ref )              ! Namelist namtsd in reference namelist : 
+            READ  ( numnam_ref, namtsd, IOSTAT = ios, ERR = 901)
+901         IF( ios /= 0 )   CALL ctl_nam ( ios , 'namtsd in reference namelist' )
+            REWIND( numnam_cfg )              ! Namelist namtsd in configuration namelist : Parameters of the run
+            READ  ( numnam_cfg, namtsd, IOSTAT = ios, ERR = 902 )
+902         IF( ios >  0 )   CALL ctl_nam ( ios , 'namtsd in configuration namelist' )
+            IF(lwm) WRITE ( numond, namtsd )
+              
+            IF(lwp) THEN                  ! control print
+                 WRITE(numout,*)
+                 WRITE(numout,*) 'dia_ar5_init : Temperature & Salinity data from namtsd '
+                 WRITE(numout,*) '~~~~~~~~~~~~ '
+                 WRITE(numout,*) '   Namelist namtsd'
+                 WRITE(numout,*) '      T data   ln_tsd_init = ', ln_tsd_init
+                 WRITE(numout,*) '      damping of ocean T & S toward T &S input data        ln_tsd_dmp  = ', ln_tsd_dmp
+                 WRITE(numout,*)
+            ENDIF
+              
+          ENDIF
+          IF( iom_use( 'sshthster' ) .OR. iom_use( 'sshthster_mat' )   ) THEN
+              
+              ALLOCATE( zsaldta(jpi,jpj,jpk,jpts) )
+              CALL iom_open ( TRIM( cn_dir )//TRIM(sn_sal%clname), inum )
+              CALL iom_get  ( inum, jpdom_data, TRIM(sn_sal%clvar), zsaldta(:,:,:,1), 1  )
+              CALL iom_get  ( inum, jpdom_data, TRIM(sn_sal%clvar), zsaldta(:,:,:,2), 12 )
+              CALL iom_close( inum )
+              
+              sn0(:,:,:) = 0.5_wp * ( zsaldta(:,:,:,1) + zsaldta(:,:,:,2) )        
+              sn0(:,:,:) = sn0(:,:,:) * tmask(:,:,:)
+              
+              IF( ln_zps ) THEN               ! z-coord. partial steps
+                 DO jj = 1, jpj               ! interpolation of salinity at the last ocean level (i.e. the partial step)
+                    DO ji = 1, jpi
+                       ik = mbkt(ji,jj)
+                       IF( ik > 1 ) THEN
+                          zztmp = ( gdept_1d(ik) - gdept_0(ji,jj,ik) ) / ( gdept_1d(ik) - gdept_1d(ik-1) )
+                          sn0(ji,jj,ik) = ( 1._wp - zztmp ) * sn0(ji,jj,ik) + zztmp * sn0(ji,jj,ik-1)
+                       ENDIF
+                    END DO
+                 END DO
+              ENDIF
+              !
+              DEALLOCATE( zsaldta )
+          ENDIF
+          IF( iom_use( 'sshhlster' ) .OR. iom_use( 'sshhlster_mat' )   ) THEN
+          
+              ALLOCATE( ztemdta(jpi,jpj,jpk,jpts) )
+              CALL iom_open ( TRIM( cn_dir )//TRIM(sn_tem%clname), inum )
+              CALL iom_get  ( inum, jpdom_data, TRIM(sn_tem%clvar), ztemdta(:,:,:,1), 1  )
+              CALL iom_get  ( inum, jpdom_data, TRIM(sn_tem%clvar), ztemdta(:,:,:,2), 12 )
+              CALL iom_close( inum )
+
+              tn0(:,:,:) = 0.5_wp * ( ztemdta(:,:,:,1) + ztemdta(:,:,:,2) )        
+              tn0(:,:,:) = tn0(:,:,:) * tmask(:,:,:)
+
+              IF( ln_zps ) THEN               ! z-coord. partial steps
+                 DO jj = 1, jpj               ! interpolation of salinity at the last ocean level (i.e. the partial step)
+                    DO ji = 1, jpi
+                       ik = mbkt(ji,jj)
+                       IF( ik > 1 ) THEN
+                          zztmp = ( gdept_1d(ik) - gdept_0(ji,jj,ik) ) / ( gdept_1d(ik) - gdept_1d(ik-1) )
+                          tn0(ji,jj,ik) = ( 1._wp - zztmp ) * tn0(ji,jj,ik) + zztmp * tn0(ji,jj,ik-1)
+                       ENDIF
+                    END DO
+                 END DO
+              ENDIF
+              !
+              DEALLOCATE( ztemdta )
+          ENDIF
+      
       ENDIF
+         !JT
+         !
       !
    END SUBROUTINE dia_ar5_init
 
