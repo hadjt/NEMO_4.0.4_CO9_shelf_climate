@@ -154,6 +154,10 @@ MODULE in_out_manager
    INTEGER ::   numdct_salt     =   -1      !: logical unit for salt    transports output
    INTEGER ::   numfl           =   -1      !: logical unit for floats ascii output
    INTEGER ::   numflo          =   -1      !: logical unit for floats ascii output
+   !JT 
+   INTEGER ::   numdct_reg_bin     =   -1      !: logical unit for NOOS    transports output
+   INTEGER ::   numdct_reg_txt   =   -1      !: logical unit for NOOS hourly transports output
+   !JT
 
    !!----------------------------------------------------------------------
    !!                          Run control  

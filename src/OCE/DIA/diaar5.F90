@@ -35,6 +35,11 @@ MODULE diaar5
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   sn0          ! initial salinity
    !JT
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   tn0          ! initial temperature
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   sshthster_mat         ! ssh_thermosteric height
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   sshhlster_mat         ! ssh_halosteric height
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   sshsteric_mat         ! ssh_steric height
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   zbotpres_mat          ! bottom pressure
+
    !JT
 
    LOGICAL  :: l_ar5
@@ -63,6 +68,12 @@ CONTAINS
       ALLOCATE( tn0(jpi,jpj,jpk) , STAT=dia_ar5_alloc )
       CALL mpp_sum ( 'diaar5', dia_ar5_alloc )
       IF( dia_ar5_alloc /= 0 )   CALL ctl_stop( 'STOP', 'dia_ar5_alloc: failed to allocate Temp arrays' )
+
+      ALLOCATE( sshthster_mat(jpi,jpj),sshhlster_mat(jpi,jpj),sshsteric_mat(jpi,jpj), &
+          & zbotpres_mat(jpi,jpj),STAT=dia_ar5_alloc )
+      CALL mpp_sum ( 'diaar5', dia_ar5_alloc )
+      IF( dia_ar5_alloc /= 0 )   CALL ctl_stop( 'STOP', 'dia_ar5_alloc: failed to allocate Temp arrays' )
+
       !JT
       !
    END FUNCTION dia_ar5_alloc

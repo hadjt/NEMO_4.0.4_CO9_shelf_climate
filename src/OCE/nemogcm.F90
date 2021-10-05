@@ -73,6 +73,7 @@ MODULE nemogcm
    USE crsini         ! initialise grid coarsening utility
    USE dia25h         ! 25h mean output
    !JT
+   USE diaregmean      ! Top,middle,bottom output
    USE diapea         ! pea
    !JT
 
@@ -498,6 +499,7 @@ CONTAINS
                            CALL dia_harm_init   ! tidal harmonics outputs
      IF( ln_diaobs    )    CALL dia_obs( nit000-1 )   ! Observation operator for restart
                            !JT
+                           CALL dia_regmean_init  ! Initialise Regiona mean
                            CALL dia_pea_init  ! Initialise PEA 
                            !JT
 

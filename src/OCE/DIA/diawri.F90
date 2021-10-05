@@ -47,6 +47,7 @@ MODULE diawri
    USE in_out_manager ! I/O manager
    USE dia25h         ! 25h Mean output
    !JT
+   USE diaregmean      ! regionalmean
    USE diapea         ! pea
    !JT
    USE iom            ! 
@@ -424,6 +425,13 @@ CONTAINS
       if ( ln_pea ) THEN
          CALL dia_pea( kt )
       ENDIF
+   
+      IF (ln_diaregmean) THEN
+         !write(*,*) kt,narea,'diawri before dia_regmean'
+         CALL dia_regmean( kt )
+         !write(*,*) kt,narea,'diawri after dia_regmean'
+      ENDIF
+
       !JT
 
       IF( ln_timing )   CALL timing_stop('dia_wri')

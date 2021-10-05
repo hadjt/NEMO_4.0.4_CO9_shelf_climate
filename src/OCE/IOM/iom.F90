@@ -57,6 +57,11 @@ MODULE iom
 #endif
    PUBLIC iom_init, iom_swap, iom_open, iom_close, iom_setkt, iom_varid, iom_get, iom_get_var
    PUBLIC iom_chkatt, iom_getatt, iom_putatt, iom_getszuld, iom_rstput, iom_delay_rst, iom_put
+
+   !JT
+   INTEGER , PUBLIC ::   n_regions_output
+   !JT
+
    PUBLIC iom_use, iom_context_finalize, iom_miss_val
 
    PRIVATE iom_rp0d, iom_rp1d, iom_rp2d, iom_rp3d
@@ -115,6 +120,37 @@ CONTAINS
       LOGICAL ::   ll_tmppatch = .TRUE.    !: seb: patch before we remove periodicity
       INTEGER ::   nldi_save, nlei_save    !:      and close boundaries in output files
       INTEGER ::   nldj_save, nlej_save    !:
+
+
+
+
+    !JT
+
+      REAL(wp),  ALLOCATABLE,   DIMENSION(:,:) ::   tmpregion !: temporary region_mask
+      INTEGER, DIMENSION(3) ::   zdimsz   ! number of elements in each of the 3 dimensions (i.e., lon, lat, no of masks, 297,  375,  4) for an array
+      INTEGER               ::   zndims   ! number of dimensions in an array (i.e. 3, )
+      INTEGER :: inum, nmasks,ierr,maskno,idmaskvar,tmpint
+      REAL(wp), ALLOCATABLE,   DIMENSION(:,:,:)  ::   tmp_region_mask_real   ! tempory region_mask of reals
+      
+      LOGICAL ::   ln_diaregmean  ! region mean calculation
+   
+    
+      INTEGER :: ios                  ! Local integer output status for namelist read
+      LOGICAL :: ln_diaregmean_ascii  ! region mean calculation ascii output
+      LOGICAL :: ln_diaregmean_bin  ! region mean calculation binary output
+      LOGICAL :: ln_diaregmean_nc  ! region mean calculation netcdf output
+      LOGICAL :: ln_diaregmean_karamld  ! region mean calculation including kara mld terms
+      LOGICAL :: ln_diaregmean_pea  ! region mean calculation including pea terms
+      LOGICAL :: ln_diaregmean_diaar5  ! region mean calculation including AR5 SLR terms
+      LOGICAL :: ln_diaregmean_diasbc  ! region mean calculation including Surface BC
+    
+#if defined key_fabm
+      LOGICAL :: ln_diaregmean_bgc  ! region mean calculation including BGC
+#endif
+
+
+    !JT
+
       !!----------------------------------------------------------------------
       !
       ! seb: patch before we remove periodicity and close boundaries in output files
@@ -131,7 +167,81 @@ CONTAINS
       ENDIF
       !
       ALLOCATE( zt_bnds(2,jpk), zw_bnds(2,jpk) )
+
+
+    !JT
+      ! Read the number region mask to work out how many regions are needed.
+      
+#if defined key_fabm
+      NAMELIST/nam_diaregmean/ ln_diaregmean,ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
+        & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,ln_diaregmean_bgc
+#else
+      NAMELIST/nam_diaregmean/ ln_diaregmean,ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
+        & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc
+#endif
+      
+      ! read in Namelist. 
+      !!----------------------------------------------------------------------
       !
+      REWIND ( numnam_ref )              ! Read Namelist nam_diatmb in referdiatmbence namelist : TMB diagnostics
+      READ   ( numnam_ref, nam_diaregmean, IOSTAT=ios, ERR= 901 )
+901   IF( ios /= 0 ) CALL ctl_nam ( ios , 'nam_diaregmean in reference namelist' )
+
+      REWIND( numnam_cfg )              ! Namelist nam_diatmb in configuration namelist  TMB diagnostics
+      READ  ( numnam_cfg, nam_diaregmean, IOSTAT = ios, ERR = 902 )
+902   IF( ios > 0 ) CALL ctl_nam ( ios , 'nam_diaregmean in configuration namelist' )
+      IF(lwm) WRITE ( numond, nam_diaregmean )
+
+      IF (ln_diaregmean) THEN
+      
+        ! Open region mask for region means, and retrieve the size of the mask (number of levels)          
+          CALL iom_open ( 'region_mask.nc', inum )
+          idmaskvar = iom_varid( inum, 'mask', kdimsz=zdimsz, kndims=zndims, ldstop = .FALSE.)          
+          nmasks = zdimsz(3)
+          
+          ! read in the region mask (which contains floating point numbers) into a temporary array of reals.
+          ALLOCATE( tmp_region_mask_real(jpi,jpj,nmasks),  STAT= ierr )
+          IF( ierr /= 0 )   CALL ctl_stop( 'dia_regmean_init: failed to allocate tmp_region_mask_real array' )
+          
+          ! Use jpdom_unknown to read in a n layer mask.
+          tmp_region_mask_real(:,:,:) = 0
+          CALL iom_get( inum, jpdom_unknown, 'mask', tmp_region_mask_real(1:nlci,1:nlcj,1:nmasks),   &
+              &          kstart = (/ mig(1),mjg(1),1 /), kcount = (/ nlci,nlcj,nmasks /) )
+          
+          CALL iom_close( inum )
+          !Convert the region mask of reals into one of integers. 
+          
+          
+          n_regions_output = 0
+          DO maskno = 1,nmasks
+              tmpint = maxval(int(tmp_region_mask_real(:,:,maskno)))
+              CALL mpp_max( 'iom',tmpint )
+              n_regions_output = n_regions_output + (tmpint + 1)
+          END DO
+      
+          
+        
+      ELSE
+        n_regions_output = 1
+      ENDIF
+      
+      
+
+
+
+    !JT
+
+
+
+
+
+
+    
+
+
+
+
+
       clname = cdname
       IF( TRIM(Agrif_CFixed()) /= '0' )   clname = TRIM(Agrif_CFixed())//"_"//TRIM(cdname)
       CALL xios_context_initialize(TRIM(clname), mpi_comm_oce)
@@ -204,6 +314,11 @@ CONTAINS
           CALL iom_set_axis_attr( "depthv",  paxis = gdept_1d )
           CALL iom_set_axis_attr( "depthw",  paxis = gdepw_1d )
 
+
+      
+
+      
+
           ! Add vertical grid bounds
           zt_bnds(2,:        ) = gdept_1d(:)
           zt_bnds(1,2:jpk    ) = gdept_1d(1:jpkm1)
@@ -230,6 +345,12 @@ CONTAINS
           CALL iom_set_axis_attr( "iax_28C", (/ REAL(28,wp) /) )   ! strange syntaxe and idea...
           CALL iom_set_axis_attr( "basin"  , (/ (REAL(ji,wp), ji=1,5) /) )
       ENDIF
+
+
+      !JT
+      !JT CALL iom_set_axis_attr( "region", (/ (REAL(ji,wp), ji=1,n_regions_output) /) )
+      !JT CALL iom_set_axis_attr( "noos", (/ (REAL(ji,wp), ji=1,3) /) )
+      !JT
       !
       ! automatic definitions of some of the xml attributs
       IF( TRIM(cdname) == TRIM(crxios_context) ) THEN
