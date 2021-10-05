@@ -46,6 +46,9 @@ MODULE diawri
    USE lbclnk         ! ocean lateral boundary conditions (or mpp link)
    USE in_out_manager ! I/O manager
    USE dia25h         ! 25h Mean output
+   !JT
+   USE diapea         ! pea
+   !JT
    USE iom            ! 
    USE ioipsl         ! 
    USE eosbn2
@@ -416,6 +419,12 @@ CONTAINS
       !
           
       IF (ln_dia25h)   CALL dia_25h( kt )             ! 25h averaging
+
+      !JT
+      if ( ln_pea ) THEN
+         CALL dia_pea( kt )
+      ENDIF
+      !JT
 
       IF( ln_timing )   CALL timing_stop('dia_wri')
       !

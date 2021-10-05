@@ -72,6 +72,10 @@ MODULE nemogcm
    USE step_diu       ! diurnal bulk SST timestepping (called from here if run offline)
    USE crsini         ! initialise grid coarsening utility
    USE dia25h         ! 25h mean output
+   !JT
+   USE diapea         ! pea
+   !JT
+
    USE sbc_oce , ONLY : lk_oasis
    USE wet_dry        ! Wetting and drying setting   (wad_init routine)
 #if defined key_top
@@ -493,6 +497,10 @@ CONTAINS
                            CALL dia_25h_init    ! 25h mean  outputs
                            CALL dia_harm_init   ! tidal harmonics outputs
      IF( ln_diaobs    )    CALL dia_obs( nit000-1 )   ! Observation operator for restart
+                           !JT
+                           CALL dia_pea_init  ! Initialise PEA 
+                           !JT
+
 
       !                                      ! Assimilation increments
       IF( lk_asminc    )   CALL asm_inc_init    ! Initialize assimilation increments
