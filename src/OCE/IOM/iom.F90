@@ -47,6 +47,10 @@ MODULE iom
    USE lib_fortran 
    USE diurnal_bulk, ONLY : ln_diurnal_only, ln_diurnal
 
+   !JT
+   !USE diaregmean , ONLY : ln_diaregmean, n_regions_output
+   !JT
+
    IMPLICIT NONE
    PUBLIC   !   must be public to be able to access iom_def through iom
    
@@ -57,10 +61,6 @@ MODULE iom
 #endif
    PUBLIC iom_init, iom_swap, iom_open, iom_close, iom_setkt, iom_varid, iom_get, iom_get_var
    PUBLIC iom_chkatt, iom_getatt, iom_putatt, iom_getszuld, iom_rstput, iom_delay_rst, iom_put
-
-   !JT
-   INTEGER , PUBLIC ::   n_regions_output
-   !JT
 
    PUBLIC iom_use, iom_context_finalize, iom_miss_val
 
@@ -125,15 +125,8 @@ CONTAINS
 
 
     !JT
-
-      REAL(wp),  ALLOCATABLE,   DIMENSION(:,:) ::   tmpregion !: temporary region_mask
-      INTEGER, DIMENSION(3) ::   zdimsz   ! number of elements in each of the 3 dimensions (i.e., lon, lat, no of masks, 297,  375,  4) for an array
-      INTEGER               ::   zndims   ! number of dimensions in an array (i.e. 3, )
-      INTEGER :: inum, nmasks,ierr,maskno,idmaskvar,tmpint
-      REAL(wp), ALLOCATABLE,   DIMENSION(:,:,:)  ::   tmp_region_mask_real   ! tempory region_mask of reals
-      
       LOGICAL ::   ln_diaregmean  ! region mean calculation
-   
+      INTEGER  ::  nn_regions_output, n_regions_output
     
       INTEGER :: ios                  ! Local integer output status for namelist read
       LOGICAL :: ln_diaregmean_ascii  ! region mean calculation ascii output
@@ -147,8 +140,6 @@ CONTAINS
 #if defined key_fabm
       LOGICAL :: ln_diaregmean_bgc  ! region mean calculation including BGC
 #endif
-
-
     !JT
 
       !!----------------------------------------------------------------------
@@ -173,10 +164,10 @@ CONTAINS
       ! Read the number region mask to work out how many regions are needed.
       
 #if defined key_fabm
-      NAMELIST/nam_diaregmean/ ln_diaregmean,ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
+      NAMELIST/nam_diaregmean/ ln_diaregmean,nn_regions_output,ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
         & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,ln_diaregmean_bgc
 #else
-      NAMELIST/nam_diaregmean/ ln_diaregmean,ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
+      NAMELIST/nam_diaregmean/ ln_diaregmean,nn_regions_output,ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
         & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc
 #endif
       
@@ -192,43 +183,15 @@ CONTAINS
 902   IF( ios > 0 ) CALL ctl_nam ( ios , 'nam_diaregmean in configuration namelist' )
       IF(lwm) WRITE ( numond, nam_diaregmean )
 
-      IF (ln_diaregmean) THEN
-      
-        ! Open region mask for region means, and retrieve the size of the mask (number of levels)          
-          CALL iom_open ( 'region_mask.nc', inum )
-          idmaskvar = iom_varid( inum, 'mask', kdimsz=zdimsz, kndims=zndims, ldstop = .FALSE.)          
-          nmasks = zdimsz(3)
-          
-          ! read in the region mask (which contains floating point numbers) into a temporary array of reals.
-          ALLOCATE( tmp_region_mask_real(jpi,jpj,nmasks),  STAT= ierr )
-          IF( ierr /= 0 )   CALL ctl_stop( 'dia_regmean_init: failed to allocate tmp_region_mask_real array' )
-          
-          ! Use jpdom_unknown to read in a n layer mask.
-          tmp_region_mask_real(:,:,:) = 0
-          CALL iom_get( inum, jpdom_unknown, 'mask', tmp_region_mask_real(1:nlci,1:nlcj,1:nmasks),   &
-              &          kstart = (/ mig(1),mjg(1),1 /), kcount = (/ nlci,nlcj,nmasks /) )
-          
-          CALL iom_close( inum )
-          !Convert the region mask of reals into one of integers. 
-          
-          
-          n_regions_output = 0
-          DO maskno = 1,nmasks
-              tmpint = maxval(int(tmp_region_mask_real(:,:,maskno)))
-              CALL mpp_max( 'iom',tmpint )
-              n_regions_output = n_regions_output + (tmpint + 1)
-          END DO
-      
-          
-        
+      !IF(lwp) WRITE(numout,*) 'JT IOM_init: ln_diaregmean = ', ln_diaregmean
+      IF (ln_diaregmean) THEN      
+        n_regions_output = nn_regions_output
+        IF(lwp) WRITE(numout,*) 'JT IOM_init: n_regions_output , ln_diaregmean =  ', n_regions_output ,ln_diaregmean
+         
       ELSE
         n_regions_output = 1
+        IF(lwp) WRITE(numout,*) 'JT IOM_init: n_regions_output , ln_diaregmean =  ', n_regions_output ,ln_diaregmean
       ENDIF
-      
-      
-
-
-
     !JT
 
 

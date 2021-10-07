@@ -25,6 +25,7 @@ MODULE diaregmean
    PRIVATE
 
    LOGICAL , PUBLIC ::   ln_diaregmean  ! region mean calculation
+   INTEGER , PUBLIC ::   n_regions_output
    PUBLIC   dia_regmean_init            ! routine called by nemogcm.F90
    PUBLIC   dia_regmean                 ! routine called by diawri.F90   
    PUBLIC   dia_calctmb_region_mean     ! routine called by diatmb.F90
@@ -78,11 +79,12 @@ CONTAINS
       INTEGER  ::   maskno              ! counter for number of masks
       INTEGER  ::   jj,ji               ! i and j index
       INTEGER  ::   tmpint              ! temporary integer
+      INTEGER  ::   nn_regions_output,check_regions_output
       REAL(wp),  ALLOCATABLE,   DIMENSION(:,:) ::   tmpregion !: temporary region_mask
       INTEGER, DIMENSION(3) ::   zdimsz   ! number of elements in each of the 3 dimensions (i.e., lon, lat, no of masks, 297,  375,  4) for an array
       INTEGER               ::   zndims   ! number of dimensions in an array (i.e. 3, )
 
-
+      CHARACTER(len=128) :: stop_error_message
 #if defined key_fabm
       INTEGER               ::   js,jl,jn, tmp_dummy
 
@@ -92,9 +94,14 @@ CONTAINS
       CHARACTER(len = 10), ALLOCATABLE, DIMENSION(:)       ::   BGC_stat_name(:),BGC_lev_name(:),BGC_output_var(:)
 #endif
 
-      !
-      NAMELIST/nam_diaregmean/ ln_diaregmean,ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
+      
+#if defined key_fabm
+      NAMELIST/nam_diaregmean/ ln_diaregmean,nn_regions_output,ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
         & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,ln_diaregmean_bgc
+#else
+      NAMELIST/nam_diaregmean/ ln_diaregmean,nn_regions_output,ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
+        & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc
+#endif
       
       
       ! read in Namelist. 
@@ -291,12 +298,27 @@ CONTAINS
           ! work out the number of regions in each mask, asssuming land is 0, and the regions are consectively numbered, 
           ! without missing any number, so the number of regions is the maximum number + 1 (for land). mpp_max across the 
           ! processors to get the global maxima
+          check_regions_output = 0
           DO maskno = 1,nmasks
               tmpint = maxval(region_mask(:,:,maskno))
               CALL mpp_max( 'diaregionmean', tmpint )
               nreg_mat(maskno) = tmpint + 1
+              check_regions_output = check_regions_output + tmpint + 1
           END DO
-        
+
+
+
+          ! can't use IOM call, as this iom isn't called yet... maybe move into step after iom_init?
+          n_regions_output = nn_regions_output
+          write (stop_error_message, "(A70,I3,A8,I3)") "dia_regmean_init: namelist:nam_diaregmean nn_regions_output should be ",check_regions_output," but is ",n_regions_output
+          
+          IF (check_regions_output .NE. n_regions_output) THEN
+              CALL ctl_stop(trim(stop_error_message))
+          ENDIF
+
+
+
+
           IF(lwp) THEN 
               ! if writing out as binary and text, open the files. 
               IF ( ln_diaregmean_bin ) THEN
