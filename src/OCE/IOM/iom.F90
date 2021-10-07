@@ -186,11 +186,11 @@ CONTAINS
       !IF(lwp) WRITE(numout,*) 'JT IOM_init: ln_diaregmean = ', ln_diaregmean
       IF (ln_diaregmean) THEN      
         n_regions_output = nn_regions_output
-        IF(lwp) WRITE(numout,*) 'JT IOM_init: n_regions_output , ln_diaregmean =  ', n_regions_output ,ln_diaregmean
+        !IF(lwp) WRITE(numout,*) 'JT IOM_init: n_regions_output , ln_diaregmean =  ', n_regions_output ,ln_diaregmean
          
       ELSE
         n_regions_output = 1
-        IF(lwp) WRITE(numout,*) 'JT IOM_init: n_regions_output , ln_diaregmean =  ', n_regions_output ,ln_diaregmean
+        !IF(lwp) WRITE(numout,*) 'JT IOM_init: n_regions_output , ln_diaregmean =  ', n_regions_output ,ln_diaregmean
       ENDIF
     !JT
 
@@ -311,7 +311,7 @@ CONTAINS
 
 
       !JT
-      !JT CALL iom_set_axis_attr( "region", (/ (REAL(ji,wp), ji=1,n_regions_output) /) )
+      CALL iom_set_axis_attr( "region", (/ (REAL(ji,wp), ji=1,n_regions_output) /) )
       !JT CALL iom_set_axis_attr( "noos", (/ (REAL(ji,wp), ji=1,3) /) )
       !JT
       !

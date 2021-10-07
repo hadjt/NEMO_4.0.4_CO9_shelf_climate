@@ -1036,7 +1036,7 @@ CONTAINS
           END DO      
           tmp_name_iom =  trim(trim("reg_") // trim(tmp_name) // trim('_ave'))
           IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom)
-          !JT IOM CALL iom_put(trim(tmp_name_iom), zrmet_out )
+          CALL iom_put(trim(tmp_name_iom), zrmet_out )
           zrmet_out(:,:,:) = 0
           zrmet_val = 0
           tmp_name_iom = ''
@@ -1050,7 +1050,7 @@ CONTAINS
           END DO
           tmp_name_iom =  trim(trim("reg_") // trim(tmp_name) // trim('_tot'))
           IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom)          
-          !JT IOM CALL iom_put( trim(tmp_name_iom), zrmet_out )
+          CALL iom_put( trim(tmp_name_iom), zrmet_out )
           zrmet_out(:,:,:) = 0
           zrmet_val = 0
           tmp_name_iom = ''
@@ -1064,7 +1064,7 @@ CONTAINS
           END DO
           tmp_name_iom =  trim(trim("reg_") // trim(tmp_name) // trim('_var'))
           IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom)          
-          !JT IOM CALL iom_put( trim(tmp_name_iom), zrmet_out )
+          CALL iom_put( trim(tmp_name_iom), zrmet_out )
           zrmet_out(:,:,:) = 0
           zrmet_val = 0
           tmp_name_iom = ''
@@ -1078,7 +1078,7 @@ CONTAINS
           END DO
           tmp_name_iom =  trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))
           IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom)          
-          !JT IOM CALL iom_put( trim(tmp_name_iom), zrmet_out )
+          CALL iom_put( trim(tmp_name_iom), zrmet_out )
           zrmet_out(:,:,:) = 0
           zrmet_val = 0
           tmp_name_iom = ''
@@ -1092,7 +1092,7 @@ CONTAINS
           END DO
           tmp_name_iom =  trim(trim("reg_") // trim(tmp_name) // trim('_reg_id'))
           IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom)          
-          !JT IOM CALL iom_put( trim(tmp_name_iom), zrmet_out )
+          CALL iom_put( trim(tmp_name_iom), zrmet_out )
           zrmet_out(:,:,:) = 0
           zrmet_val = 0
           tmp_name_iom = ''
@@ -1106,7 +1106,7 @@ CONTAINS
           END DO
           tmp_name_iom =  trim(trim("reg_") // trim(tmp_name) // trim('_mask_id'))
           IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom)          
-          !JT IOM CALL iom_put( trim(tmp_name_iom), zrmet_out )
+          CALL iom_put( trim(tmp_name_iom), zrmet_out )
           zrmet_out(:,:,:) = 0
           zrmet_val = 0
           tmp_name_iom = ''
@@ -1120,12 +1120,12 @@ CONTAINS
           END DO
 
           DO jm = 1,9
-              !JT IOM CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_ave')), dummy_zrmet )
-              !JT IOM CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_tot')), dummy_zrmet )
-              !JT IOM CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_var')), dummy_zrmet )
-              !JT IOM CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_cnt')), dummy_zrmet )
-              !JT IOM CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')), dummy_zrmet )
-              !JT IOM CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')), dummy_zrmet )
+              CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_ave')), dummy_zrmet )
+              CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_tot')), dummy_zrmet )
+              CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_var')), dummy_zrmet )
+              CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_cnt')), dummy_zrmet )
+              CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')), dummy_zrmet )
+              CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')), dummy_zrmet )
           END DO
     
           DEALLOCATE( dummy_zrmet)
