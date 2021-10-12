@@ -39,6 +39,7 @@ MODULE diaregmean
    LOGICAL :: ln_diaregmean_diasbc      ! region mean calculation including Surface BC
    LOGICAL :: ln_diaregmean_karamld     ! region mean calculation including kara mld terms
    LOGICAL :: ln_diaregmean_pea         ! region mean calculation including pea terms
+   INTEGER :: nn_diaregmean_nhourlymean ! region mean number of hours in mean (normally 1., <0 = instantanous (slower))
 
 
    LOGICAL :: ln_diaregmean_bgc         ! region mean calculation including BGC terms
@@ -51,6 +52,7 @@ MODULE diaregmean
    INTEGER,  SAVE, ALLOCATABLE,   DIMENSION(:)      ::   nreg_mat               ! Number of regions in each mask
    
    REAL(wp),  ALLOCATABLE,   DIMENSION(:,:,:) ::   tmp_field_mat !: temporary region_mask
+   REAL(wp),  ALLOCATABLE,   DIMENSION(:,:,:) ::   tmp_field_HSVM_mat !: temporary region_mask
    REAL(wp),  ALLOCATABLE,   DIMENSION(:,:,:) ::   tmp_field_AR5_mat !: temporary region_mask
    REAL(wp),  ALLOCATABLE,   DIMENSION(:,:,:) ::   tmp_field_SBC_mat !: temporary region_mask
    INTEGER  ::   tmp_field_cnt                                   ! tmp_field_cnt integer
@@ -97,10 +99,10 @@ CONTAINS
       
 #if defined key_fabm
       NAMELIST/nam_diaregmean/ ln_diaregmean,nn_regions_output,ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
-        & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,ln_diaregmean_bgc
+        & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,ln_diaregmean_bgc,nn_diaregmean_nhourlymean
 #else
       NAMELIST/nam_diaregmean/ ln_diaregmean,nn_regions_output,ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
-        & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc
+        & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,nn_diaregmean_nhourlymean
 #endif
       
       
@@ -136,7 +138,10 @@ CONTAINS
       ALLOCATE( tmp_field_mat(jpi,jpj,19),  STAT= ierr ) !SS/NB/DT/ZA/VA T/S, SSH, MLD, PEA, PEAT, PEAS
           IF( ierr /= 0 )   CALL ctl_stop( 'tmp_field_mat: failed to allocate tmp_field_mat array' )
       tmp_field_mat(:,:,:) = 0.
-      tmp_field_cnt = 0
+
+      ALLOCATE( tmp_field_HSVM_mat(jpi,jpj,4),  STAT= ierr ) !SS/NB/DT/ZA/VA T/S, SSH, MLD, PEA, PEAT, PEAS
+          IF( ierr /= 0 )   CALL ctl_stop( 'tmp_field_mat: failed to allocate tmp_field_mat array' )
+      tmp_field_HSVM_mat(:,:,:) = 0.
       
       IF(ln_diaregmean_diaar5) THEN   
         ALLOCATE( tmp_field_AR5_mat(jpi,jpj,4),  STAT= ierr ) !SLR terms
@@ -149,6 +154,9 @@ CONTAINS
             IF( ierr /= 0 )   CALL ctl_stop( 'tmp_field_SBC_mat: failed to allocate tmp_field_SBC_mat array' )
         tmp_field_SBC_mat(:,:,:) = 0.
       ENDIF
+
+
+      tmp_field_cnt = 0
 
 
 #if defined key_fabm
@@ -456,7 +464,7 @@ CONTAINS
       REAL(wp), POINTER, DIMENSION(:,:,:) :: zwtmbT    ! temporary T workspace 
       REAL(wp), POINTER, DIMENSION(:,:,:) :: zwtmbS    ! temporary S workspace 
       REAL(wp), POINTER, DIMENSION(:,:,:) :: zwtmb1    ! temporary density workspace 
-      REAL(wp)                            ::   zmdi       ! set masked values
+      REAL(wp)                            ::   zmdi    ! set masked values
       INTEGER, INTENT( in ) ::   kt      ! ocean time-step index
       
       REAL(wp)                         ::   zdt  ! temporary reals
@@ -468,11 +476,13 @@ CONTAINS
       CHARACTER (len=120), DIMENSION(19) ::    name_dat_mat
       CHARACTER (len=120), DIMENSION(4)  ::    name_AR5_mat
       CHARACTER (len=120), DIMENSION(7)  ::    name_SBC_mat
+      CHARACTER (len=120), DIMENSION(4)  ::    name_HSCM_mat
       INTEGER                            ::    vi     
       LOGICAL                            ::    do_reg_mean
       REAL(wp), DIMENSION(19)            ::    output_mulitpler_dat_mat
       REAL(wp), DIMENSION(4)             ::    output_mulitpler_AR5_mat
       REAL(wp), DIMENSION(7)             ::    output_mulitpler_SBC_mat
+      REAL(wp), DIMENSION(4)             ::    output_mulitpler_HSVM_mat
 
 
 #if defined key_fabm
@@ -496,15 +506,26 @@ CONTAINS
         zdt = rdt
         !JT Not sure what this is??  IF( nacc == 1 ) zdt = rdtmin
 
-        IF( MOD( 3600,INT(zdt) ) == 0 ) THEN
-            i_steps = 3600/INT(zdt)
-        ELSE
-            CALL ctl_stop('STOP', 'dia_regmean: timestep must give MOD(3600,rdt) = 0 otherwise no hourly values are possible')
-        ENDIF
 
-        !!IF(lwp ) WRITE(numout,*) 'JT! test! dia_wri_region_mean instantaneous values!!!'
-        !!i_steps = 1
-        !!IF(lwp ) WRITE(numout,*) 'JT! test! dia_wri_region_mean instantaneous values!!!'
+        IF (nn_diaregmean_nhourlymean <= 0) THEN
+            ! 22 mins with instanteous values, 13 mins with hourly mean
+            IF(lwp ) WRITE(numout,*) 'dia_wri_region_mean instantaneous values!!!'
+            i_steps = 1
+            IF(lwp ) WRITE(numout,*) 'dia_wri_region_mean instantaneous values!!!'
+        ELSE
+
+            IF( MOD( (nn_diaregmean_nhourlymean*3600),INT(zdt) ) == 0 ) THEN
+                i_steps = (3600*nn_diaregmean_nhourlymean)/INT(zdt)
+            ELSE
+                CALL ctl_stop('STOP', 'dia_regmean: timestep must give MOD(3600,rdt) = 0 otherwise no hourly values are possible')
+            ENDIF
+
+        ENDIF
+        
+
+
+
+
         
         ! Every time step, add physical, SBC, PEA, MLD terms to create hourly sums.
         ! Every hour, then hourly sums are divided by the number of timesteps in the hour to make hourly means
@@ -526,6 +547,7 @@ CONTAINS
         IF( ierr /= 0 )   CALL ctl_stop( 'dia_regmean: failed to allocate zwtmbS array' )
         ALLOCATE (zwtmb1(jpi , jpj, 6),  STAT= ierr )
         IF( ierr /= 0 )   CALL ctl_stop( 'dia_regmean: failed to allocate zwtmb1 array' )
+
             
         CALL dia_calctmb_region_mean(  tsn(:,:,:,jp_tem),zwtmbT)
         CALL dia_calctmb_region_mean(  tsn(:,:,:,jp_sal),zwtmbS)
@@ -547,6 +569,22 @@ CONTAINS
         CALL dia_calctmb_region_mean(  tmp1mat,zwtmb1)
         !JT CALL wrk_dealloc( jpi , jpj, jpk , tmp1mat )
         DEALLOCATE(  tmp1mat )
+
+        tmp_field_HSVM_mat(:,:,1) = (zwtmbT(:,:,6)*tmask(:,:,1)*3850.) !heat 4200 is value for FW, 3850 is the value for sea water. 
+        tmp_field_HSVM_mat(:,:,2) = (zwtmbS(:,:,6)*tmask(:,:,1))       !salt
+        tmp_field_HSVM_mat(:,:,3) = (zwtmb1(:,:,5)*tmask(:,:,1))       !vol
+        tmp_field_HSVM_mat(:,:,4) = (zwtmb1(:,:,6)*tmask(:,:,1))       !mass
+
+        name_HSCM_mat(1) = 'heat'
+        name_HSCM_mat(2) = 'salt'
+        name_HSCM_mat(3) = 'vol'
+        name_HSCM_mat(4) = 'mass'
+
+        output_mulitpler_HSVM_mat(:) = 1
+        output_mulitpler_HSVM_mat(1) = 1e-12
+        output_mulitpler_HSVM_mat(2) = 1e-12
+
+
  
         ! Add 2d fields every time step to the hourly total.
             
@@ -561,7 +599,7 @@ CONTAINS
         name_dat_mat(4) = 'zat'
         tmp_field_mat(:,:,5) = tmp_field_mat(:,:,5) + (zwtmbT(:,:,5)*tmask(:,:,1)) !vat
         name_dat_mat(5) = 'vat'
-        tmp_field_mat(:,:,6) = tmp_field_mat(:,:,6) + ((zwtmbT(:,:,6)*tmask(:,:,1)*4.2e3))! heat
+        tmp_field_mat(:,:,6) = tmp_field_mat(:,:,6) + (tmp_field_HSVM_mat(:,:,1))! heat
         name_dat_mat(6) = 'heat'
 
         tmp_field_mat(:,:,7) = tmp_field_mat(:,:,7) + (zwtmbS(:,:,1)*tmask(:,:,1)) !sss
@@ -575,20 +613,17 @@ CONTAINS
         name_dat_mat(10) = 'zas'
         tmp_field_mat(:,:,11) = tmp_field_mat(:,:,11) + (zwtmbS(:,:,5)*tmask(:,:,1)) !vas
         name_dat_mat(11) = 'vas'
-        tmp_field_mat(:,:,12) = tmp_field_mat(:,:,12) + (zwtmbS(:,:,6)*tmask(:,:,1)) !salt
+        tmp_field_mat(:,:,12) = tmp_field_mat(:,:,12) + (tmp_field_HSVM_mat(:,:,2)) !salt
         name_dat_mat(12) = 'salt'
 
-        tmp_field_mat(:,:,13) = tmp_field_mat(:,:,13) + (zwtmb1(:,:,5)*tmask(:,:,1))!vol
+        tmp_field_mat(:,:,13) = tmp_field_mat(:,:,13) + (tmp_field_HSVM_mat(:,:,3))!vol
         name_dat_mat(13) = 'vol'
-        tmp_field_mat(:,:,14) = tmp_field_mat(:,:,14) + (zwtmb1(:,:,6)*tmask(:,:,1))!mass
+        tmp_field_mat(:,:,14) = tmp_field_mat(:,:,14) + (tmp_field_HSVM_mat(:,:,4))!mass
         name_dat_mat(14) = 'mass'
 
         tmp_field_mat(:,:,15) = tmp_field_mat(:,:,15) + (sshn(:,:)*tmask(:,:,1)) !ssh
         name_dat_mat(15) = 'ssh'
         
-        !JT CALL wrk_dealloc( jpi , jpj, 6 , zwtmbT )
-        !JT CALL wrk_dealloc( jpi , jpj, 6 , zwtmbS )
-        !JT CALL wrk_dealloc( jpi , jpj, 6 , zwtmb1 )
 
         DEALLOCATE (zwtmbT, zwtmbS, zwtmb1 )
 
@@ -638,501 +673,105 @@ CONTAINS
         ENDIF
 
         output_mulitpler_dat_mat(:) = 1.
-        output_mulitpler_dat_mat(6) = 1e-12
-        output_mulitpler_dat_mat(12) = 1e-12
+        output_mulitpler_dat_mat(6)  = output_mulitpler_HSVM_mat(1) ! 1e-12
+        output_mulitpler_dat_mat(12) = output_mulitpler_HSVM_mat(2) ! 1e-12
         output_mulitpler_AR5_mat(:) = 1.
         output_mulitpler_SBC_mat(:) = 1.
 
-        IF(lwp) THEN 
+        ! On the hour, calculate hourly means from the hourly total,and process the regional means. 
 
-        
-            DO vi=1,19 ! State loop
-               WRITE(numout,*)  'JT dia_regmean SBC variable : ',TRIM( name_dat_mat(vi) )
-            END DO
-            DO vi=1,4 ! State loop
-               WRITE(numout,*)  'JT dia_regmean SBC variable : ',TRIM( name_AR5_mat(vi) )
-            END DO
-            DO vi=1,7 ! State loop
-               WRITE(numout,*)  'JT dia_regmean SBC variable : ',TRIM( name_SBC_mat(vi) )
-            END DO
-        ENDIF
-
-        
         tmp_field_cnt = tmp_field_cnt + 1
 
-        ! On the hour, calculate hourly means from the hourly total,and process the regional means. 
         
         IF ( MOD( kt, i_steps ) == 0 .and. kt .ne. nn_it000 ) THEN
 
            
-!            DO vi=1,19 ! State loop
+            DO vi=1,19 ! State loop
 
-!               do_reg_mean = .TRUE.
+               do_reg_mean = .TRUE.
 
-!               IF (vi == 16) THEN
-!                 IF( .not. ln_diaregmean_karamld ) do_reg_mean = .FALSE.   
-!               ENDIF 
+               IF (vi == 16) THEN
+                 IF( .not. ln_diaregmean_karamld ) do_reg_mean = .FALSE.   
+               ENDIF 
 
-!               IF ((vi == 17) .OR. (vi == 18) .OR. (vi == 19) ) THEN
-!                 IF( .not. ln_diaregmean_pea ) do_reg_mean = .FALSE.   
-!               ENDIF 
+               IF ((vi == 17) .OR. (vi == 18) .OR. (vi == 19) ) THEN
+                 IF( .not. ln_diaregmean_pea ) do_reg_mean = .FALSE.   
+               ENDIF 
 
-!               tmp_name=TRIM( name_dat_mat(vi) )
-!               IF ( do_reg_mean ) THEN
-!                   IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-!                      & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-!                      & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-!                      & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-!                      & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-!                      & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
+               tmp_name=TRIM( name_dat_mat(vi) )
+               IF ( do_reg_mean ) THEN
+                   IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
+                     & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
+                     & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
+                     & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
+                     & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
+                     & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
 
-!                        CALL dia_wri_region_mean(kt, TRIM(tmp_name) , output_mulitpler_dat_mat(vi)*tmp_field_mat(:,:,vi)/real(tmp_field_cnt,wp))
-!                        WRITE(numout,*)  'JT dia_regmean SBC variable - region mean: ',TRIM( name_dat_mat(vi) ),';'
-!                    ELSE
-!                        WRITE(numout,*)  'JT dia_regmean SBC variable - no iom_use: ',TRIM( name_dat_mat(vi) ),';'
-!                    ENDIF
-!                ELSE
-!                    WRITE(numout,*)  'JT dia_regmean SBC variable - no do_reg_mean: ',TRIM( name_dat_mat(vi) ),';',ln_diaregmean_karamld,ln_diaregmean_pea
-!                ENDIF
-!                tmp_name=""
-!            END DO
-!            
-!            tmp_field_mat(:,:,:) = 0.
-
-
-            tmp_name="sst"
-            IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_mat(:,:,1)/real(tmp_field_cnt,wp))
-            ENDIF
-            tmp_name=""
-
-            tmp_name="nbt"
-            IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_mat(:,:,2)/real(tmp_field_cnt,wp))
-            ENDIF
-            tmp_name=""
-
-            tmp_name="dft"
-            IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_mat(:,:,3)/real(tmp_field_cnt,wp))
-            ENDIF
-            tmp_name=""
-
-
-            tmp_name="zat"
-            IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_mat(:,:,4)/real(tmp_field_cnt,wp))
-            ENDIF
-            tmp_name=""
-
-
-            tmp_name="vat"
-            IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_mat(:,:,5)/real(tmp_field_cnt,wp))
-            ENDIF
-            tmp_name=""
-
-
-            tmp_name="heat"
-            IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_mat(:,:,6)/real(tmp_field_cnt,wp)/1e12)
-            ENDIF
-            tmp_name=""
-
-            tmp_name="sss"
-            IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_mat(:,:,7)/real(tmp_field_cnt,wp))
-            ENDIF
-            tmp_name=""
-
-            tmp_name="nbs"
-            IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_mat(:,:,8)/real(tmp_field_cnt,wp))
-            ENDIF
-            tmp_name=""
-
-            tmp_name="dfs"
-            IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_mat(:,:,9)/real(tmp_field_cnt,wp))
-            ENDIF
-            tmp_name=""
-
-
-            tmp_name="zas"
-            IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_mat(:,:,10)/real(tmp_field_cnt,wp))
-            ENDIF
-            tmp_name=""
-
-
-            tmp_name="vas"
-            IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_mat(:,:,11)/real(tmp_field_cnt,wp))
-            ENDIF
-            tmp_name=""
-
-
-            tmp_name="salt"
-            IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_mat(:,:,12)/real(tmp_field_cnt,wp)/1e12)
-            ENDIF
-            tmp_name=""
-
-            tmp_name="vol"
-            IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_mat(:,:,13)/real(tmp_field_cnt,wp))
-            ENDIF
-            tmp_name=""
-
-
-            tmp_name="mass"
-            IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_mat(:,:,14)/real(tmp_field_cnt,wp))
-            ENDIF
-            tmp_name=""
-
-
-            tmp_name="ssh"
-            IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-              & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_mat(:,:,15)/real(tmp_field_cnt,wp))
-            ENDIF
-            tmp_name=""
-
-
-
-
-
-
-            !CALL dia_wri_region_mean(kt, "sst" , tmp_field_mat(:,:,1)/real(tmp_field_cnt,wp))
-            !CALL dia_wri_region_mean(kt, "nbt" , tmp_field_mat(:,:,2)/real(tmp_field_cnt,wp))
-            !CALL dia_wri_region_mean(kt, "dft" , tmp_field_mat(:,:,3)/real(tmp_field_cnt,wp))
-
-            !CALL dia_wri_region_mean(kt, "zat" , tmp_field_mat(:,:,4)/real(tmp_field_cnt,wp))
-            !CALL dia_wri_region_mean(kt, "vat" , tmp_field_mat(:,:,5)/real(tmp_field_cnt,wp))
-            !CALL dia_wri_region_mean(kt, "heat" , tmp_field_mat(:,:,6)/real(tmp_field_cnt,wp)/1e12)
-
-            !CALL dia_wri_region_mean(kt, "sss" , tmp_field_mat(:,:,7)/real(tmp_field_cnt,wp))
-            !CALL dia_wri_region_mean(kt, "nbs" , tmp_field_mat(:,:,8)/real(tmp_field_cnt,wp))
-            !CALL dia_wri_region_mean(kt, "dfs" , tmp_field_mat(:,:,9)/real(tmp_field_cnt,wp))
-
-            !CALL dia_wri_region_mean(kt, "zas" , tmp_field_mat(:,:,10)/real(tmp_field_cnt,wp))
-            !CALL dia_wri_region_mean(kt, "vas" , tmp_field_mat(:,:,11)/real(tmp_field_cnt,wp))
-            !CALL dia_wri_region_mean(kt, "salt" , tmp_field_mat(:,:,12)/real(tmp_field_cnt,wp)/1e12)
-
-            !CALL dia_wri_region_mean(kt, "vol" , tmp_field_mat(:,:,13)/real(tmp_field_cnt,wp))
-            !CALL dia_wri_region_mean(kt, "mass" , tmp_field_mat(:,:,14)/real(tmp_field_cnt,wp))
-
-            !CALL dia_wri_region_mean(kt, "ssh" , tmp_field_mat(:,:,15)/real(tmp_field_cnt,wp))
-
-
-            IF( ln_diaregmean_karamld  ) THEN    
-                tmp_name="mldkara"
-                IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                    CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_mat(:,:,16)/real(tmp_field_cnt,wp))
+                        CALL dia_wri_region_mean(kt, TRIM(tmp_name) , output_mulitpler_dat_mat(vi)*tmp_field_mat(:,:,vi)/real(tmp_field_cnt,wp))
+                        WRITE(numout,*)  'JT dia_regmean SBC variable - region mean: ',TRIM( name_dat_mat(vi) ),';'
+                    ELSE
+                        WRITE(numout,*)  'JT dia_regmean SBC variable - no iom_use: ',TRIM( name_dat_mat(vi) ),';'
+                    ENDIF
+                ELSE
+                    WRITE(numout,*)  'JT dia_regmean SBC variable - no do_reg_mean: ',TRIM( name_dat_mat(vi) ),';',ln_diaregmean_karamld,ln_diaregmean_pea
                 ENDIF
                 tmp_name=""
-      
-                !CALL dia_wri_region_mean(kt, "mldkara" , tmp_field_mat(:,:,16)/real(tmp_field_cnt,wp)) ! tm
-            ENDIF
-
-            IF( ln_diaregmean_pea  ) THEN          
-
-                tmp_name="pea"
-                IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                    CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_mat(:,:,17)/real(tmp_field_cnt,wp))
-                ENDIF
-                tmp_name=""
-
-                tmp_name="peat"
-                IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                    CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_mat(:,:,18)/real(tmp_field_cnt,wp))
-                ENDIF
-                tmp_name=""
-
-
-                tmp_name="peas"
-                IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                    CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_mat(:,:,19)/real(tmp_field_cnt,wp))
-                ENDIF
-                tmp_name=""
-
-
-                !CALL dia_wri_region_mean(kt, "pea"  , tmp_field_mat(:,:,17)/real(tmp_field_cnt,wp))
-                !CALL dia_wri_region_mean(kt, "peat" , tmp_field_mat(:,:,18)/real(tmp_field_cnt,wp))
-                !CALL dia_wri_region_mean(kt, "peas" , tmp_field_mat(:,:,19)/real(tmp_field_cnt,wp)) ! tmb
-            ENDIF
-
+            END DO
+            
             tmp_field_mat(:,:,:) = 0.
 
+            DO vi=1,4 ! State loop
+
+                tmp_name=TRIM( name_HSCM_mat(vi) ) // trim('_inst')
+                IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
+                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
+                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
+                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
+                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
+                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
+
+                    CALL dia_wri_region_mean(kt, TRIM(tmp_name) , output_mulitpler_HSVM_mat(vi)*tmp_field_HSVM_mat(:,:,vi))
+                ENDIF
+                tmp_name=""
+            END DO
+
+            tmp_field_HSVM_mat(:,:,:) = 0.
             IF( ln_diaregmean_diaar5  ) THEN
+                DO vi=1,4 ! State loop
 
-                tmp_name="ssh_steric"
-                IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
+                    tmp_name=TRIM( name_AR5_mat(vi) )
+                    IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
+                      & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
+                      & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
+                      & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
+                      & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
+                      & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
 
-                    CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_AR5_mat(:,:,1)/real(tmp_field_cnt,wp))
-                ENDIF
-                tmp_name=""
-
-                tmp_name="ssh_thermosteric"
-                IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                    CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_AR5_mat(:,:,2)/real(tmp_field_cnt,wp))
-                ENDIF
-                tmp_name=""
-
-                tmp_name="ssh_halosteric"
-                IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                    CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_AR5_mat(:,:,3)/real(tmp_field_cnt,wp))
-                ENDIF
-                tmp_name=""
-
-                tmp_name="bot_pres"
-                IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                    CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_AR5_mat(:,:,4)/real(tmp_field_cnt,wp))
-                ENDIF
-                tmp_name=""
-
-                !CALL dia_wri_region_mean(kt, "ssh_steric" ,      tmp_field_AR5_mat(:,:,1)/real(tmp_field_cnt,wp))
-                !CALL dia_wri_region_mean(kt, "ssh_thermosteric", tmp_field_AR5_mat(:,:,2)/real(tmp_field_cnt,wp))
-                !CALL dia_wri_region_mean(kt, "ssh_halosteric" ,  tmp_field_AR5_mat(:,:,3)/real(tmp_field_cnt,wp))
-                !CALL dia_wri_region_mean(kt, "bot_pres" ,        tmp_field_AR5_mat(:,:,4)/real(tmp_field_cnt,wp))
+                        CALL dia_wri_region_mean(kt, TRIM(tmp_name) , output_mulitpler_AR5_mat(vi)*tmp_field_AR5_mat(:,:,vi)/real(tmp_field_cnt,wp))
+                    ENDIF
+                    tmp_name=""
+                END DO
                 tmp_field_AR5_mat(:,:,:) = 0.
             ENDIF
 
             IF( ln_diaregmean_diasbc  ) THEN
+                DO vi=1,7 ! State loop
 
+                    tmp_name=TRIM( name_SBC_mat(vi) )
+                    IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
+                      & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
+                      & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
+                      & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
+                      & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
+                      & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
 
-
-                tmp_name="qt"
-                IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                    CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_SBC_mat(:,:,1)/real(tmp_field_cnt,wp))
-                ENDIF
-                tmp_name=""
-
-                tmp_name="qsr"
-                IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                    CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_SBC_mat(:,:,2)/real(tmp_field_cnt,wp))
-                ENDIF
-                tmp_name=""
-
-                tmp_name="qns"
-                IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                    CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_SBC_mat(:,:,3)/real(tmp_field_cnt,wp))
-                ENDIF
-                tmp_name=""
-
-                tmp_name="emp"
-                IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                    CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_SBC_mat(:,:,4)/real(tmp_field_cnt,wp))
-                ENDIF
-                tmp_name=""
-
-                tmp_name="wspd"
-                IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                    CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_SBC_mat(:,:,5)/real(tmp_field_cnt,wp))
-                ENDIF
-                tmp_name=""
-
-                tmp_name="mslp"
-                IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                    CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_SBC_mat(:,:,6)/real(tmp_field_cnt,wp))
-                ENDIF
-                tmp_name=""
-
-                tmp_name="rnf"
-                IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
-                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
-
-                    CALL dia_wri_region_mean(kt, TRIM(tmp_name) , tmp_field_SBC_mat(:,:,7)/real(tmp_field_cnt,wp))
-                ENDIF
-                tmp_name=""
-
-                !CALL dia_wri_region_mean(kt, "qt"   , tmp_field_SBC_mat(:,:,1)/real(tmp_field_cnt,wp))
-                !CALL dia_wri_region_mean(kt, "qsr"  , tmp_field_SBC_mat(:,:,2)/real(tmp_field_cnt,wp))
-                !CALL dia_wri_region_mean(kt, "qns"  , tmp_field_SBC_mat(:,:,3)/real(tmp_field_cnt,wp))
-                !CALL dia_wri_region_mean(kt, "emp"  , tmp_field_SBC_mat(:,:,4)/real(tmp_field_cnt,wp))
-                !CALL dia_wri_region_mean(kt, "wspd" , tmp_field_SBC_mat(:,:,5)/real(tmp_field_cnt,wp))
-                !CALL dia_wri_region_mean(kt, "mslp" , tmp_field_SBC_mat(:,:,6)/real(tmp_field_cnt,wp))
-                !CALL dia_wri_region_mean(kt, "rnf"  , tmp_field_SBC_mat(:,:,7)/real(tmp_field_cnt,wp))
+                        CALL dia_wri_region_mean(kt, TRIM(tmp_name) , output_mulitpler_SBC_mat(vi)*tmp_field_SBC_mat(:,:,vi)/real(tmp_field_cnt,wp))
+                    ENDIF
+                    tmp_name=""
+                END DO
                 tmp_field_SBC_mat(:,:,:) = 0.
-
             ENDIF
+
 
 #if defined key_fabm
             !ADD Biogeochemistry
@@ -1217,7 +856,7 @@ CONTAINS
                     CLOSE(numdct_reg_txt)
                 ENDIF
 
-                DEALLOCATE( region_mask, nreg_mat, tmp_field_mat)
+                DEALLOCATE( region_mask, nreg_mat, tmp_field_mat,tmp_field_HSVM_mat)
                 IF( ln_diaregmean_diaar5  ) DEALLOCATE( tmp_field_AR5_mat)
                 IF( ln_diaregmean_diasbc  ) DEALLOCATE( tmp_field_SBC_mat)
             ENDIF
@@ -1257,7 +896,8 @@ CONTAINS
       REAL(wp), DIMENSION(jpi, jpj) :: internal_infield    ! Internal data field
       REAL(wp), ALLOCATABLE, DIMENSION(:) ::   zrmet_ave,zrmet_tot,zrmet_var,zrmet_cnt,zrmet_mask_id,zrmet_reg_id  ,zrmet_min,zrmet_max
       REAL(wp), ALLOCATABLE, DIMENSION(:,:,:) ::   zrmet_out
-      REAL(wp), ALLOCATABLE,   DIMENSION(:) ::   ave_mat,tot_mat,num_mat,var_mat,ssq_mat,cnt_mat,reg_id_mat,mask_id_mat ,min_mat,max_mat   !: region_mask
+      REAL(wp), ALLOCATABLE,   DIMENSION(:) ::   ave_mat,tot_mat,num_mat,var_mat,ssq_mat,cnt_mat,reg_id_mat,mask_id_mat    !: region_mask
+      !REAL(wp), ALLOCATABLE,   DIMENSION(:) ::   min_mat,max_mat   !: region_mask
       
       REAL(wp)                         ::   zmdi, zrmet_val      ! set masked values
       INTEGER :: maskno,nreg  ! ocean time-step indexocean time step            
@@ -1364,10 +1004,10 @@ CONTAINS
           ALLOCATE( cnt_mat(nreg),  STAT= ierr )
           IF( ierr /= 0 )   CALL ctl_stop( 'dia_wri_region_mean: failed to allocate cnt_mat array' )
 
-          ALLOCATE( min_mat(nreg),  STAT= ierr )
-          IF( ierr /= 0 )   CALL ctl_stop( 'dia_wri_region_mean: failed to allocate min_mat array' )
-          ALLOCATE( max_mat(nreg),  STAT= ierr )
-          IF( ierr /= 0 )   CALL ctl_stop( 'dia_wri_region_mean: failed to allocate max_mat array' )
+          !ALLOCATE( min_mat(nreg),  STAT= ierr )
+          !IF( ierr /= 0 )   CALL ctl_stop( 'dia_wri_region_mean: failed to allocate min_mat array' )
+          !ALLOCATE( max_mat(nreg),  STAT= ierr )
+          !IF( ierr /= 0 )   CALL ctl_stop( 'dia_wri_region_mean: failed to allocate max_mat array' )
 
           ALLOCATE( reg_id_mat(nreg),  STAT= ierr )
           IF( ierr /= 0 )   CALL ctl_stop( 'dia_wri_region_mean: failed to allocate reg_id_mat array' )
@@ -1383,8 +1023,8 @@ CONTAINS
           cnt_mat(:) = 0.
           ssq_mat(:) = 0.
 
-          min_mat(:) = zmdi
-          max_mat(:) = -zmdi
+          !min_mat(:) = zmdi
+          !max_mat(:) = -zmdi
           reg_id_mat(:) = 0.
           mask_id_mat(:) = 0.
           
@@ -1402,25 +1042,40 @@ CONTAINS
                         ssq_mat(ind) = ssq_mat(ind) + ( internal_infield(ji,jj) *  internal_infield(ji,jj))
                         cnt_mat(ind) = cnt_mat(ind) + 1.
 
-                        min_mat(ind) = min(min_mat(ind),internal_infield(ji,jj))
-                        max_mat(ind) = max(max_mat(ind),internal_infield(ji,jj))
+                        !min_mat(ind) = min(min_mat(ind),internal_infield(ji,jj))
+                        !max_mat(ind) = max(max_mat(ind),internal_infield(ji,jj))
                     ENDIF
               END DO
           END DO
           IF(lwp .AND. verbose) WRITE(numout,*) 'dia_wri_region_mean : '//tmp_name//'; finish spatial loops: '
           ! sum the totals, the counts, and the squares across the processors          
           CALL mpp_sum( 'diaregionmean',tot_mat,nreg )
-          IF(lwp .AND. verbose) WRITE(numout,*) 'dia_wri_region_mean : '//tmp_name//'; finished mpp_sum 1'
-          CALL mpp_sum( 'diaregionmean',ssq_mat,nreg )
-          IF(lwp .AND. verbose) WRITE(numout,*) 'dia_wri_region_mean : '//tmp_name//'; finished mpp_sum 2'
+          IF(lwp .AND. verbose) WRITE(numout,*) 'dia_wri_region_mean : '//tmp_name//'; finished mpp_sum tot'
           CALL mpp_sum( 'diaregionmean',cnt_mat,nreg )
-          IF(lwp .AND. verbose) WRITE(numout,*) 'dia_wri_region_mean : '//tmp_name//'; finished mpp_sum 2'
+          IF(lwp .AND. verbose) WRITE(numout,*) 'dia_wri_region_mean : '//tmp_name//'; finished mpp_sum cnt'
 
-          CALL mpp_min( 'diaregionmean',min_mat,nreg )
-          IF(lwp .AND. verbose) WRITE(numout,*) 'dia_wri_region_mean : '//tmp_name//'; finished mpp_min'
-          CALL mpp_max( 'diaregionmean',max_mat,nreg )
-          IF(lwp .AND. verbose) WRITE(numout,*) 'dia_wri_region_mean : '//tmp_name//'; finished mpp_max'
+
+
+          !tmp_name_iom =  trim(trim("reg_") // trim(tmp_name) // trim('_var'))
+          !IF (iom_use(trim(tmp_name_iom)) .OR. ln_diaregmean_bin .OR. ln_diaregmean_ascii) THEN
+              CALL mpp_sum( 'diaregionmean',ssq_mat,nreg )
+              IF(lwp .AND. verbose) WRITE(numout,*) 'dia_wri_region_mean : '//tmp_name//'; finished mpp_sum ssq'
+          !ENDIF
           
+    
+
+          !tmp_name_iom =  trim(trim("reg_") // trim(tmp_name) // trim('_min'))
+          !IF (iom_use(trim(tmp_name_iom)) .OR. ln_diaregmean_bin .OR. ln_diaregmean_ascii) THEN
+              !CALL mpp_min( 'diaregionmean',min_mat,nreg )
+              !IF(lwp .AND. verbose) WRITE(numout,*) 'dia_wri_region_mean : '//tmp_name//'; finished mpp_min'
+          !ENDIF
+          
+
+          !tmp_name_iom =  trim(trim("reg_") // trim(tmp_name) // trim('_max'))
+          !IF (iom_use(trim(tmp_name_iom)) .OR. ln_diaregmean_bin .OR. ln_diaregmean_ascii)  THEN
+              !CALL mpp_max( 'diaregionmean',max_mat,nreg )
+              !IF(lwp .AND. verbose) WRITE(numout,*) 'dia_wri_region_mean : '//tmp_name//'; finished mpp_max'
+          !ENDIF
           
           !calculate the mean and variance from the total, sum of squares and the count. 
           
@@ -1447,8 +1102,8 @@ CONTAINS
                   WRITE(numdct_reg_bin) var_mat
                   WRITE(numdct_reg_bin) ssq_mat
                   WRITE(numdct_reg_bin) cnt_mat
-                  WRITE(numdct_reg_bin) min_mat
-                  WRITE(numdct_reg_bin) max_mat
+                  !WRITE(numdct_reg_bin) min_mat
+                  !WRITE(numdct_reg_bin) max_mat
               ENDIF
               
               IF ( ln_diaregmean_ascii  ) THEN
@@ -1462,8 +1117,8 @@ CONTAINS
                   WRITE(numdct_reg_txt, FMT=trim(FormatString)) trim(tmp_name)//" "//"var_mat:", var_mat
                   WRITE(numdct_reg_txt, FMT=trim(FormatString)) trim(tmp_name)//" "//"ssq_mat:", ssq_mat
                   WRITE(numdct_reg_txt, FMT=trim(FormatString)) trim(tmp_name)//" "//"cnt_mat:", cnt_mat
-                  WRITE(numdct_reg_txt, FMT=trim(FormatString)) trim(tmp_name)//" "//"min_mat:", min_mat
-                  WRITE(numdct_reg_txt, FMT=trim(FormatString)) trim(tmp_name)//" "//"max_mat:", max_mat
+                  !WRITE(numdct_reg_txt, FMT=trim(FormatString)) trim(tmp_name)//" "//"min_mat:", min_mat
+                  !WRITE(numdct_reg_txt, FMT=trim(FormatString)) trim(tmp_name)//" "//"max_mat:", max_mat
                   WRITE(numdct_reg_txt, FMT=trim(FormatString)) trim(tmp_name)//" "//"reg_mat:", reg_id_mat
                   WRITE(numdct_reg_txt, FMT=trim(FormatString)) trim(tmp_name)//" "//"msk_mat:", mask_id_mat
 
@@ -1474,8 +1129,8 @@ CONTAINS
                   zrmet_tot(    reg_ind_cnt) =     tot_mat(jm)
                   zrmet_var(    reg_ind_cnt) =     var_mat(jm)
                   zrmet_cnt(    reg_ind_cnt) =     cnt_mat(jm)
-                  zrmet_min(    reg_ind_cnt) =     min_mat(jm)
-                  zrmet_max(    reg_ind_cnt) =     max_mat(jm)
+                  !zrmet_min(    reg_ind_cnt) =     min_mat(jm)
+                  !zrmet_max(    reg_ind_cnt) =     max_mat(jm)
                   zrmet_reg_id( reg_ind_cnt) =  reg_id_mat(jm)
                   zrmet_mask_id(reg_ind_cnt) = mask_id_mat(jm)
                 
@@ -1485,10 +1140,11 @@ CONTAINS
           ENDIF
         
           IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean about to deallocated arrays for ',kt,maskno
-          DEALLOCATE(ave_mat,tot_mat,num_mat,var_mat,ssq_mat,cnt_mat,min_mat,max_mat,reg_id_mat,mask_id_mat)
+          DEALLOCATE(ave_mat,tot_mat,num_mat,var_mat,ssq_mat,cnt_mat,reg_id_mat,mask_id_mat)
+          !DEALLOCATE(min_mat,max_mat)
 
           IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean deallocated arrays for ',kt,maskno
-          IF(lwp)CALL FLUSH(numdct_reg_txt)
+          IF(lwp .AND. ln_diaregmean_ascii ) CALL FLUSH(numdct_reg_txt)
           IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean flushed region mean text for ',kt,maskno
       END DO
 

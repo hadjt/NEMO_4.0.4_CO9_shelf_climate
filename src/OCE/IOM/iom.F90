@@ -136,6 +136,7 @@ CONTAINS
       LOGICAL :: ln_diaregmean_pea  ! region mean calculation including pea terms
       LOGICAL :: ln_diaregmean_diaar5  ! region mean calculation including AR5 SLR terms
       LOGICAL :: ln_diaregmean_diasbc  ! region mean calculation including Surface BC
+      INTEGER :: nn_diaregmean_nhourlymean ! region mean number of hours in mean (normally 1., <0 = instantanous (slower))
     
 #if defined key_fabm
       LOGICAL :: ln_diaregmean_bgc  ! region mean calculation including BGC
@@ -165,10 +166,10 @@ CONTAINS
       
 #if defined key_fabm
       NAMELIST/nam_diaregmean/ ln_diaregmean,nn_regions_output,ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
-        & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,ln_diaregmean_bgc
+        & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,ln_diaregmean_bgc,nn_diaregmean_nhourlymean
 #else
       NAMELIST/nam_diaregmean/ ln_diaregmean,nn_regions_output,ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
-        & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc
+        & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,nn_diaregmean_nhourlymean
 #endif
       
       ! read in Namelist. 
