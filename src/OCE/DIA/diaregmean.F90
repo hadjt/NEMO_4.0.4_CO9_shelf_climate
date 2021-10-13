@@ -40,6 +40,7 @@ MODULE diaregmean
    LOGICAL :: ln_diaregmean_karamld     ! region mean calculation including kara mld terms
    LOGICAL :: ln_diaregmean_pea         ! region mean calculation including pea terms
    INTEGER :: nn_diaregmean_nhourlymean ! region mean number of hours in mean (normally 1., <0 = instantanous (slower))
+   LOGICAL :: ln_diaregmean_areawgt     ! Area weight region mean and region std
 
 
    LOGICAL :: ln_diaregmean_bgc         ! region mean calculation including BGC terms
@@ -55,6 +56,7 @@ MODULE diaregmean
    REAL(wp),  ALLOCATABLE,   DIMENSION(:,:,:) ::   tmp_field_HSVM_mat !: temporary region_mask
    REAL(wp),  ALLOCATABLE,   DIMENSION(:,:,:) ::   tmp_field_AR5_mat !: temporary region_mask
    REAL(wp),  ALLOCATABLE,   DIMENSION(:,:,:) ::   tmp_field_SBC_mat !: temporary region_mask
+   REAL(wp),  ALLOCATABLE,   DIMENSION(:,:)   ::   region_area_mat !: temporary region_mask
    INTEGER  ::   tmp_field_cnt                                   ! tmp_field_cnt integer
    !!----------------------------------------------------------------------
    !! NEMO/OPA 3.6 , NEMO Consortium (2014)
@@ -99,10 +101,12 @@ CONTAINS
       
 #if defined key_fabm
       NAMELIST/nam_diaregmean/ ln_diaregmean,nn_regions_output,ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
-        & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,ln_diaregmean_bgc,nn_diaregmean_nhourlymean
+        & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,ln_diaregmean_bgc,&
+        & nn_diaregmean_nhourlymean,ln_diaregmean_areawgt
 #else
       NAMELIST/nam_diaregmean/ ln_diaregmean,nn_regions_output,ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
-        & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,nn_diaregmean_nhourlymean
+        & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,&
+        & nn_diaregmean_nhourlymean,ln_diaregmean_areawgt
 #endif
       
       
@@ -132,6 +136,9 @@ CONTAINS
           WRITE(numout,*) 'Switch for regmean AR5 SLR terms (T) or not (F)  ln_diaregmean_diaar5  = ', ln_diaregmean_diaar5
           WRITE(numout,*) 'Switch for regmean Surface forcing terms (T) or not (F)  ln_diaregmean_diasbc  = ', ln_diaregmean_diasbc
           WRITE(numout,*) 'Switch for regmean BioGeoChemistry terms (T) or not (F)  ln_diaregmean_bgc  = ', ln_diaregmean_bgc
+          WRITE(numout,*) 'Switch for regmean area weighting mean, std and cnt (T) or not (F)  ln_diaregmean_areawgt  = ', ln_diaregmean_areawgt
+          WRITE(numout,*) 'Integer for regmean number of hours averaged before iom_put '
+          WRITE(numout,*) '           (<0 = instanteous, default = 1)  nn_diaregmean_nhourlymean  = ', nn_diaregmean_nhourlymean
       ENDIF
       
       
@@ -155,6 +162,15 @@ CONTAINS
         tmp_field_SBC_mat(:,:,:) = 0.
       ENDIF
 
+
+      ALLOCATE( region_area_mat(jpi,jpj),  STAT= ierr ) !SS/NB/DT/ZA/VA T/S, SSH, MLD, PEA, PEAT, PEAS
+          IF( ierr /= 0 )   CALL ctl_stop( 'region_area_mat: failed to allocate tmp_field_mat array' )
+      region_area_mat(:,:) = 1.
+
+
+      if ( ln_diaregmean_areawgt ) THEN
+          region_area_mat(:,:) = e1t(:,:)*e2t(:,:)
+      ENDIF
 
       tmp_field_cnt = 0
 
@@ -1038,9 +1054,15 @@ CONTAINS
               DO jj = nldj,nlej
                     IF ( tmask(ji,jj,1) == 1.0_wp ) THEN
                         ind = internal_region_mask(ji,jj)+1
-                        tot_mat(ind) = tot_mat(ind) + (internal_infield(ji,jj))
-                        ssq_mat(ind) = ssq_mat(ind) + ( internal_infield(ji,jj) *  internal_infield(ji,jj))
-                        cnt_mat(ind) = cnt_mat(ind) + 1.
+                        !tot_mat(ind) = tot_mat(ind) + (internal_infield(ji,jj))
+                        !ssq_mat(ind) = ssq_mat(ind) + ( internal_infield(ji,jj) *  internal_infield(ji,jj))
+                        !cnt_mat(ind) = cnt_mat(ind) + 1.
+                        ! Area Weighted values - region_area_mat == 1. or area depending on ln_diaregmean_areawgt
+                        tot_mat(ind) = tot_mat(ind) + (region_area_mat(ji,jj)*internal_infield(ji,jj))
+                        ssq_mat(ind) = ssq_mat(ind) + (region_area_mat(ji,jj)*(internal_infield(ji,jj) * internal_infield(ji,jj)))
+                        cnt_mat(ind) = cnt_mat(ind) + (region_area_mat(ji,jj)*1.)
+
+
 
                         !min_mat(ind) = min(min_mat(ind),internal_infield(ji,jj))
                         !max_mat(ind) = max(max_mat(ind),internal_infield(ji,jj))
