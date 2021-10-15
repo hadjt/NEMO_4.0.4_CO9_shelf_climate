@@ -645,6 +645,11 @@ CONTAINS
       IF( numdct_vol      /= -1 )   CLOSE( numdct_vol      )   ! volume transports
       IF( numdct_heat     /= -1 )   CLOSE( numdct_heat     )   ! heat transports
       IF( numdct_salt     /= -1 )   CLOSE( numdct_salt     )   ! salt transports
+      !JT
+      IF( numdct_NOOS     /= -1 )   CLOSE( numdct_NOOS     )   ! NOOS transports
+      IF( numdct_NOOS_h /= -1 )   CLOSE( numdct_NOOS_h )       ! NOOS transports
+      !JT
+
       !
       numout = 6                                     ! redefine numout in case it is used after this point...
       !

@@ -155,8 +155,10 @@ MODULE in_out_manager
    INTEGER ::   numfl           =   -1      !: logical unit for floats ascii output
    INTEGER ::   numflo          =   -1      !: logical unit for floats ascii output
    !JT 
-   INTEGER ::   numdct_reg_bin     =   -1      !: logical unit for NOOS    transports output
-   INTEGER ::   numdct_reg_txt   =   -1      !: logical unit for NOOS hourly transports output
+   INTEGER ::   numdct_reg_bin  =   -1      !: logical unit for regional mean binary output
+   INTEGER ::   numdct_reg_txt  =   -1      !: logical unit for regional mean ascii output
+   INTEGER ::   numdct_NOOS     =   -1      !: logical unit for NOOS    transports output
+   INTEGER ::   numdct_NOOS_h   =   -1      !: logical unit for NOOS hourly transports output
    !JT
 
    !!----------------------------------------------------------------------

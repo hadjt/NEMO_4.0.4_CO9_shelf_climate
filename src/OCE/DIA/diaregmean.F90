@@ -41,6 +41,7 @@ MODULE diaregmean
    LOGICAL :: ln_diaregmean_pea         ! region mean calculation including pea terms
    INTEGER :: nn_diaregmean_nhourlymean ! region mean number of hours in mean (normally 1., <0 = instantanous (slower))
    LOGICAL :: ln_diaregmean_areawgt     ! Area weight region mean and region std
+   LOGICAL :: ln_diaregmean_verbose     ! Region mean code verbose
 
 
    LOGICAL :: ln_diaregmean_bgc         ! region mean calculation including BGC terms
@@ -100,11 +101,11 @@ CONTAINS
 
       
 #if defined key_fabm
-      NAMELIST/nam_diaregmean/ ln_diaregmean,nn_regions_output,ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
+      NAMELIST/nam_diaregmean/ ln_diaregmean,nn_regions_output,ln_diaregmean_verbose, ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
         & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,ln_diaregmean_bgc,&
         & nn_diaregmean_nhourlymean,ln_diaregmean_areawgt
 #else
-      NAMELIST/nam_diaregmean/ ln_diaregmean,nn_regions_output,ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
+      NAMELIST/nam_diaregmean/ ln_diaregmean,nn_regions_output,ln_diaregmean_verbose, ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
         & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,&
         & nn_diaregmean_nhourlymean,ln_diaregmean_areawgt
 #endif
@@ -128,6 +129,8 @@ CONTAINS
           WRITE(numout,*) '~~~~~~~~~~~~'
           WRITE(numout,*) 'Namelist nam_regmean : set regmeanoutputs '
           WRITE(numout,*) 'Switch for regmean diagnostics (T) or not (F)  ln_diaregmean  = ', ln_diaregmean
+          WRITE(numout,*) 'Integer for regmean number of regions  = nn_regions_output', nn_regions_output
+          WRITE(numout,*) 'Switch for regmean verbose  = ln_diaregmean_verbose', ln_diaregmean_verbose
           WRITE(numout,*) 'Switch for regmean ascii output (T) or not (F)  ln_diaregmean_ascii  = ', ln_diaregmean_ascii
           WRITE(numout,*) 'Switch for regmean binary output (T) or not (F)  ln_diaregmean_bin  = ', ln_diaregmean_bin
           WRITE(numout,*) 'Switch for regmean netcdf output (T) or not (F)  ln_diaregmean_nc  = ', ln_diaregmean_nc
@@ -510,7 +513,7 @@ CONTAINS
       REAL(wp), POINTER, DIMENSION(:,:,:) :: zwtmbBGC    ! temporary BGC workspace 
 
       LOGICAL       ::   verbose
-      verbose = .FALSE.
+      verbose = ln_diaregmean_verbose
       tmp_val = 0
 #endif
       zmdi=1.e+20 !missing data indicator for maskin
@@ -724,12 +727,12 @@ CONTAINS
                      & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) ) THEN
 
                         CALL dia_wri_region_mean(kt, TRIM(tmp_name) , output_mulitpler_dat_mat(vi)*tmp_field_mat(:,:,vi)/real(tmp_field_cnt,wp))
-                        WRITE(numout,*)  'JT dia_regmean SBC variable - region mean: ',TRIM( name_dat_mat(vi) ),';'
-                    ELSE
-                        WRITE(numout,*)  'JT dia_regmean SBC variable - no iom_use: ',TRIM( name_dat_mat(vi) ),';'
+                        !WRITE(numout,*)  'JT dia_regmean SBC variable - region mean: ',TRIM( name_dat_mat(vi) ),';'
+                    !ELSE
+                       !WRITE(numout,*)  'JT dia_regmean SBC variable - no iom_use: ',TRIM( name_dat_mat(vi) ),';'
                     ENDIF
-                ELSE
-                    WRITE(numout,*)  'JT dia_regmean SBC variable - no do_reg_mean: ',TRIM( name_dat_mat(vi) ),';',ln_diaregmean_karamld,ln_diaregmean_pea
+                !ELSE
+                    !WRITE(numout,*)  'JT dia_regmean SBC variable - no do_reg_mean: ',TRIM( name_dat_mat(vi) ),';',ln_diaregmean_karamld,ln_diaregmean_pea
                 ENDIF
                 tmp_name=""
             END DO
@@ -925,7 +928,9 @@ CONTAINS
       CHARACTER(LEN=180) :: FormatString,nreg_string,tmp_name_iom
       REAL(wp), ALLOCATABLE, DIMENSION(:,:,:) ::   dummy_zrmet
       LOGICAL       ::   verbose     
-      verbose = .False.
+
+
+      verbose = ln_diaregmean_verbose
 
 
       zmdi=1.e+20 !missing data indicator for maskin
@@ -1194,8 +1199,8 @@ CONTAINS
                 if (zrmet_val .NE. zrmet_val) zrmet_val = 1e20
                 zrmet_out(:,:,jm) = zrmet_val
               END DO      
-              IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom)
-              CALL iom_put(trim(tmp_name_iom), zrmet_out )
+              IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom), zrmet_out(1,1,1)
+              CALL iom_put(trim(tmp_name_iom), zrmet_out ) !zrmet_out(1,1,:) ) )
               zrmet_out(:,:,:) = 0
               zrmet_val = 0
               tmp_name_iom = ''
@@ -1210,8 +1215,8 @@ CONTAINS
                 if (zrmet_val .NE. zrmet_val) zrmet_val = 1e20
                 zrmet_out(:,:,jm) = zrmet_val
               END DO
-              IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom)          
-              CALL iom_put( trim(tmp_name_iom), zrmet_out )
+              IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom), zrmet_out(1,1,1)
+              CALL iom_put( trim(tmp_name_iom), zrmet_out ) !zrmet_out(1,1,:) ) )
               zrmet_out(:,:,:) = 0
               zrmet_val = 0
               tmp_name_iom = ''
@@ -1226,8 +1231,8 @@ CONTAINS
                 if (zrmet_val .NE. zrmet_val) zrmet_val = 1e20
                 zrmet_out(:,:,jm) = zrmet_val
               END DO
-              IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom)          
-              CALL iom_put( trim(tmp_name_iom), zrmet_out )
+              IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom), zrmet_out(1,1,1)
+              CALL iom_put( trim(tmp_name_iom), zrmet_out ) !zrmet_out(1,1,:) ) )
               zrmet_out(:,:,:) = 0
               zrmet_val = 0
               tmp_name_iom = ''
@@ -1242,8 +1247,8 @@ CONTAINS
                 if (zrmet_val .NE. zrmet_val) zrmet_val = 1e20
                 zrmet_out(:,:,jm) = zrmet_val
               END DO
-              IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom)          
-              CALL iom_put( trim(tmp_name_iom), zrmet_out )
+              IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom), zrmet_out(1,1,1)
+              CALL iom_put( trim(tmp_name_iom), zrmet_out ) !zrmet_out(1,1,:) ) )
               zrmet_out(:,:,:) = 0
               zrmet_val = 0
               tmp_name_iom = ''
@@ -1258,8 +1263,8 @@ CONTAINS
                 if (zrmet_val .NE. zrmet_val) zrmet_val = 1e20
                 zrmet_out(:,:,jm) = zrmet_val
               END DO
-              IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom)          
-              CALL iom_put( trim(tmp_name_iom), zrmet_out )
+              IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom), zrmet_out(1,1,1)
+              CALL iom_put( trim(tmp_name_iom), zrmet_out ) !zrmet_out(1,1,:) ) )
               zrmet_out(:,:,:) = 0
               zrmet_val = 0
               tmp_name_iom = ''
@@ -1275,58 +1280,58 @@ CONTAINS
                 zrmet_out(:,:,jm) = zrmet_val
               END DO
               IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom)          
-              CALL iom_put( trim(tmp_name_iom), zrmet_out )
+              CALL iom_put( trim(tmp_name_iom), zrmet_out ) !zrmet_out(1,1,:) ) )
               zrmet_out(:,:,:) = 0
               zrmet_val = 0
               tmp_name_iom = ''
           ENDIF
       
-      ELSE
-        
-          ALLOCATE( dummy_zrmet(jpi,jpj,n_regions_output),  STAT= ierr )
-            IF( ierr /= 0 )   CALL ctl_stop( 'dia_wri_region_mean: failed to allocate dummy_zrmet array' )
+!      ELSE
+!        
+!          ALLOCATE( dummy_zrmet(jpi,jpj,n_regions_output),  STAT= ierr )
+!            IF( ierr /= 0 )   CALL ctl_stop( 'dia_wri_region_mean: failed to allocate dummy_zrmet array' )
 
-          DO jm = 1,n_regions_output
-              dummy_zrmet(:,:,jm) =     real(jm,wp)
-          END DO
+!          DO jm = 1,n_regions_output
+!              dummy_zrmet(:,:,jm) =     real(jm,wp)
+!          END DO
 
-          DO jm = 1,9
-              !IF iom_use(trim(trim(trim("reg_") // trim(tmp_name) // trim('_ave')))) CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_ave')), dummy_zrmet )
-              !IF iom_use(trim(trim(trim("reg_") // trim(tmp_name) // trim('_tot')))) CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_tot')), dummy_zrmet )
-              !IF iom_use(trim(trim(trim("reg_") // trim(tmp_name) // trim('_var')))) CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_var')), dummy_zrmet )
-              !IF iom_use(trim(trim(trim("reg_") // trim(tmp_name) // trim('_cnt')))) CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_cnt')), dummy_zrmet )
-              !IF iom_use(trim(trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')), dummy_zrmet )
-              !IF iom_use(trim(trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')), dummy_zrmet )
+!          DO jm = 1,9
+!              !IF iom_use(trim(trim(trim("reg_") // trim(tmp_name) // trim('_ave')))) CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_ave')), dummy_zrmet )
+!              !IF iom_use(trim(trim(trim("reg_") // trim(tmp_name) // trim('_tot')))) CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_tot')), dummy_zrmet )
+!              !IF iom_use(trim(trim(trim("reg_") // trim(tmp_name) // trim('_var')))) CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_var')), dummy_zrmet )
+!              !IF iom_use(trim(trim(trim("reg_") // trim(tmp_name) // trim('_cnt')))) CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_cnt')), dummy_zrmet )
+!              !IF iom_use(trim(trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')), dummy_zrmet )
+!              !IF iom_use(trim(trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')))) CALL iom_put( trim(trim("reg_") // trim(tmp_name) // trim('_mask_id')), dummy_zrmet )
 
 
-              tmp_name_iom =  trim(trim("reg_") // trim(tmp_name) // trim('_ave'))
-              IF (iom_use(trim(tmp_name_iom))) THEN
-                 CALL iom_put( trim(tmp_name_iom), dummy_zrmet )
-              ENDIF
-              tmp_name_iom =  trim(trim("reg_") // trim(tmp_name) // trim('_tot'))
-              IF (iom_use(trim(tmp_name_iom))) THEN
-                 CALL iom_put( trim(tmp_name_iom), dummy_zrmet )
-              ENDIF
-              tmp_name_iom =  trim(trim("reg_") // trim(tmp_name) // trim('_var'))
-              IF (iom_use(trim(tmp_name_iom))) THEN
-                 CALL iom_put( trim(tmp_name_iom), dummy_zrmet )
-              ENDIF
-              tmp_name_iom =  trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))
-              IF (iom_use(trim(tmp_name_iom))) THEN
-                 CALL iom_put( trim(tmp_name_iom), dummy_zrmet )
-              ENDIF
-              tmp_name_iom =  trim(trim("reg_") // trim(tmp_name) // trim('_reg_id'))
-              IF (iom_use(trim(tmp_name_iom))) THEN
-                 CALL iom_put( trim(tmp_name_iom), dummy_zrmet )
-              ENDIF
-              tmp_name_iom =  trim(trim("reg_") // trim(tmp_name) // trim('_mask_id'))
-              IF (iom_use(trim(tmp_name_iom))) THEN
-                 CALL iom_put( trim(tmp_name_iom), dummy_zrmet )
-              ENDIF
-
-          END DO
-    
-          DEALLOCATE( dummy_zrmet)
+!              tmp_name_iom =  trim(trim("reg_") // trim(tmp_name) // trim('_ave'))
+!              IF (iom_use(trim(tmp_name_iom))) THEN
+!                 CALL iom_put( trim(tmp_name_iom), dummy_zrmet(1,1,:) ) !dummy_zrmet(1,1,:) ) )
+!              ENDIF
+!              tmp_name_iom =  trim(trim("reg_") // trim(tmp_name) // trim('_tot'))
+!              IF (iom_use(trim(tmp_name_iom))) THEN
+!                 CALL iom_put( trim(tmp_name_iom), dummy_zrmet(1,1,:) ) !dummy_zrmet(1,1,:) ) )
+!              ENDIF
+!              tmp_name_iom =  trim(trim("reg_") // trim(tmp_name) // trim('_var'))
+!              IF (iom_use(trim(tmp_name_iom))) THEN
+!                 CALL iom_put( trim(tmp_name_iom), dummy_zrmet(1,1,:) ) !dummy_zrmet(1,1,:) ) )
+!              ENDIF
+!              tmp_name_iom =  trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))
+!              IF (iom_use(trim(tmp_name_iom))) THEN
+!                 CALL iom_put( trim(tmp_name_iom), dummy_zrmet(1,1,:) ) !dummy_zrmet(1,1,:) ) )
+!              ENDIF
+!              tmp_name_iom =  trim(trim("reg_") // trim(tmp_name) // trim('_reg_id'))
+!              IF (iom_use(trim(tmp_name_iom))) THEN
+!                 CALL iom_put( trim(tmp_name_iom), dummy_zrmet(1,1,:) ) !dummy_zrmet(1,1,:) ) )
+!              ENDIF
+!              tmp_name_iom =  trim(trim("reg_") // trim(tmp_name) // trim('_mask_id'))
+!              IF (iom_use(trim(tmp_name_iom))) THEN
+!                 CALL iom_put( trim(tmp_name_iom), dummy_zrmet(1,1,:) ) !dummy_zrmet(1,1,:) ) )
+!              ENDIF
+!
+!          END DO
+!    
+!          DEALLOCATE( dummy_zrmet)
       ENDIF
       
       DEALLOCATE(zrmet_ave,zrmet_tot,zrmet_var,zrmet_cnt,zrmet_mask_id,zrmet_reg_id,zrmet_min,zrmet_max,zrmet_out)

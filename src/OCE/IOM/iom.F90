@@ -127,6 +127,7 @@ CONTAINS
     !JT
       LOGICAL ::   ln_diaregmean  ! region mean calculation
       INTEGER  ::  nn_regions_output, n_regions_output
+      LOGICAL :: ln_diaregmean_verbose     ! Region mean code verbose
     
       INTEGER :: ios                  ! Local integer output status for namelist read
       LOGICAL :: ln_diaregmean_ascii  ! region mean calculation ascii output
@@ -167,14 +168,15 @@ CONTAINS
       ! Read the number region mask to work out how many regions are needed.
       
 #if defined key_fabm
-      NAMELIST/nam_diaregmean/ ln_diaregmean,nn_regions_output,ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
+      NAMELIST/nam_diaregmean/ ln_diaregmean,nn_regions_output,ln_diaregmean_verbose, ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
         & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,ln_diaregmean_bgc,&
         & nn_diaregmean_nhourlymean,ln_diaregmean_areawgt
 #else
-      NAMELIST/nam_diaregmean/ ln_diaregmean,nn_regions_output,ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
+      NAMELIST/nam_diaregmean/ ln_diaregmean,nn_regions_output,ln_diaregmean_verbose, ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
         & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,&
         & nn_diaregmean_nhourlymean,ln_diaregmean_areawgt
 #endif
+
       
       ! read in Namelist. 
       !!----------------------------------------------------------------------
@@ -317,7 +319,7 @@ CONTAINS
 
       !JT
       CALL iom_set_axis_attr( "region", (/ (REAL(ji,wp), ji=1,n_regions_output) /) )
-      !JT CALL iom_set_axis_attr( "noos", (/ (REAL(ji,wp), ji=1,3) /) )
+      CALL iom_set_axis_attr( "noos", (/ (REAL(ji,wp), ji=1,3) /) )
       !JT
       !
       ! automatic definitions of some of the xml attributs
