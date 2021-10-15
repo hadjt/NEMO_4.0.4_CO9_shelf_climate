@@ -1244,6 +1244,9 @@ CONTAINS
       IF(lwm) WRITE( numond, nameos )
       !
       rau0        = 1026._wp                 !: volumic mass of reference     [kg/m3]
+      !JT
+      rau0        = 1020._wp                 !: volumic mass of reference     [kg/m3]
+      !JT
       rcp         = 3991.86795711963_wp      !: heat capacity     [J/K]
       !
       IF(lwp) THEN                ! Control print
