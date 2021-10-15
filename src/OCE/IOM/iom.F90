@@ -133,7 +133,7 @@ CONTAINS
       LOGICAL :: ln_diaregmean_ascii  ! region mean calculation ascii output
       LOGICAL :: ln_diaregmean_bin  ! region mean calculation binary output
       LOGICAL :: ln_diaregmean_nc  ! region mean calculation netcdf output
-      LOGICAL :: ln_diaregmean_karamld  ! region mean calculation including kara mld terms
+      LOGICAL :: ln_diaregmean_mld  ! region mean calculation including kara mld terms
       LOGICAL :: ln_diaregmean_pea  ! region mean calculation including pea terms
       LOGICAL :: ln_diaregmean_diaar5  ! region mean calculation including AR5 SLR terms
       LOGICAL :: ln_diaregmean_diasbc  ! region mean calculation including Surface BC
@@ -169,11 +169,11 @@ CONTAINS
       
 #if defined key_fabm
       NAMELIST/nam_diaregmean/ ln_diaregmean,nn_regions_output,ln_diaregmean_verbose, ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
-        & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,ln_diaregmean_bgc,&
+        & ln_diaregmean_mld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,ln_diaregmean_bgc,&
         & nn_diaregmean_nhourlymean,ln_diaregmean_areawgt
 #else
       NAMELIST/nam_diaregmean/ ln_diaregmean,nn_regions_output,ln_diaregmean_verbose, ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
-        & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,&
+        & ln_diaregmean_mld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,&
         & nn_diaregmean_nhourlymean,ln_diaregmean_areawgt
 #endif
 

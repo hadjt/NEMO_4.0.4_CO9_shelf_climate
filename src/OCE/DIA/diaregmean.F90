@@ -9,7 +9,6 @@ MODULE diaregmean
    USE dom_oce         ! ocean space and time domain
    USE in_out_manager  ! I/O units
    USE iom             ! I/0 library
-   !JT USE wrk_nemo        ! working arrays
    USE diapea          ! PEA
    USE zdfmxl          ! MLD
    USE sbc_oce
@@ -37,7 +36,7 @@ MODULE diaregmean
    LOGICAL :: ln_diaregmean_nc          ! region mean calculation netcdf output
    LOGICAL :: ln_diaregmean_diaar5      ! region mean calculation including AR5 SLR terms
    LOGICAL :: ln_diaregmean_diasbc      ! region mean calculation including Surface BC
-   LOGICAL :: ln_diaregmean_karamld     ! region mean calculation including kara mld terms
+   LOGICAL :: ln_diaregmean_mld         ! region mean calculation including kara mld terms
    LOGICAL :: ln_diaregmean_pea         ! region mean calculation including pea terms
    INTEGER :: nn_diaregmean_nhourlymean ! region mean number of hours in mean (normally 1., <0 = instantanous (slower))
    LOGICAL :: ln_diaregmean_areawgt     ! Area weight region mean and region std
@@ -102,11 +101,11 @@ CONTAINS
       
 #if defined key_fabm
       NAMELIST/nam_diaregmean/ ln_diaregmean,nn_regions_output,ln_diaregmean_verbose, ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
-        & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,ln_diaregmean_bgc,&
+        & ln_diaregmean_mld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,ln_diaregmean_bgc,&
         & nn_diaregmean_nhourlymean,ln_diaregmean_areawgt
 #else
       NAMELIST/nam_diaregmean/ ln_diaregmean,nn_regions_output,ln_diaregmean_verbose, ln_diaregmean_ascii,ln_diaregmean_bin,ln_diaregmean_nc,&
-        & ln_diaregmean_karamld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,&
+        & ln_diaregmean_mld, ln_diaregmean_pea,ln_diaregmean_diaar5,ln_diaregmean_diasbc,&
         & nn_diaregmean_nhourlymean,ln_diaregmean_areawgt
 #endif
       
@@ -134,7 +133,7 @@ CONTAINS
           WRITE(numout,*) 'Switch for regmean ascii output (T) or not (F)  ln_diaregmean_ascii  = ', ln_diaregmean_ascii
           WRITE(numout,*) 'Switch for regmean binary output (T) or not (F)  ln_diaregmean_bin  = ', ln_diaregmean_bin
           WRITE(numout,*) 'Switch for regmean netcdf output (T) or not (F)  ln_diaregmean_nc  = ', ln_diaregmean_nc
-          WRITE(numout,*) 'Switch for regmean kara mld terms (T) or not (F)  ln_diaregmean_karamld  = ', ln_diaregmean_karamld
+          WRITE(numout,*) 'Switch for regmean kara mld terms (T) or not (F)  ln_diaregmean_mld  = ', ln_diaregmean_mld
           WRITE(numout,*) 'Switch for regmean PEA terms (T) or not (F)  ln_diaregmean_pea  = ', ln_diaregmean_pea
           WRITE(numout,*) 'Switch for regmean AR5 SLR terms (T) or not (F)  ln_diaregmean_diaar5  = ', ln_diaregmean_diaar5
           WRITE(numout,*) 'Switch for regmean Surface forcing terms (T) or not (F)  ln_diaregmean_diasbc  = ', ln_diaregmean_diasbc
@@ -647,11 +646,13 @@ CONTAINS
         DEALLOCATE (zwtmbT, zwtmbS, zwtmb1 )
 
         
-        IF( ln_diaregmean_karamld  ) THEN
-            tmp_field_mat(:,:,16) = tmp_field_mat(:,:,16) + (hmld_kara(:,:)*tmask(:,:,1)) !mldkara
+        IF( ln_diaregmean_mld  ) THEN
+            IF( ALLOCATED( hmld_zint ) )  THEN
+                tmp_field_mat(:,:,16) = tmp_field_mat(:,:,16) + (hmld_zint(:,:)*tmask(:,:,1)) !mldkara
+            ENDIF
         ENDIF
 
-        name_dat_mat(16) = 'mldkara'
+        name_dat_mat(16) = 'mld'
         
         IF( ln_diaregmean_pea  ) THEN
             tmp_field_mat(:,:,17) = tmp_field_mat(:,:,17) + (pea(:,:)*tmask(:,:,1))  !pea
@@ -710,7 +711,7 @@ CONTAINS
                do_reg_mean = .TRUE.
 
                IF (vi == 16) THEN
-                 IF( .not. ln_diaregmean_karamld ) do_reg_mean = .FALSE.   
+                 IF( .not. ln_diaregmean_mld ) do_reg_mean = .FALSE.   
                ENDIF 
 
                IF ((vi == 17) .OR. (vi == 18) .OR. (vi == 19) ) THEN
@@ -732,7 +733,7 @@ CONTAINS
                        !WRITE(numout,*)  'JT dia_regmean SBC variable - no iom_use: ',TRIM( name_dat_mat(vi) ),';'
                     ENDIF
                 !ELSE
-                    !WRITE(numout,*)  'JT dia_regmean SBC variable - no do_reg_mean: ',TRIM( name_dat_mat(vi) ),';',ln_diaregmean_karamld,ln_diaregmean_pea
+                    !WRITE(numout,*)  'JT dia_regmean SBC variable - no do_reg_mean: ',TRIM( name_dat_mat(vi) ),';',ln_diaregmean_mld,ln_diaregmean_pea
                 ENDIF
                 tmp_name=""
             END DO
