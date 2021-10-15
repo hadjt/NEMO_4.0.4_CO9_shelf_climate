@@ -647,9 +647,9 @@ CONTAINS
         DEALLOCATE (zwtmbT, zwtmbS, zwtmb1 )
 
         
-        !JT MLD   IF( ln_diaregmean_karamld  ) THEN
-        !JT MLD       tmp_field_mat(:,:,16) = tmp_field_mat(:,:,16) + (hmld_kara(:,:)*tmask(:,:,1)) !mldkara
-        !JT MLD   ENDIF
+        IF( ln_diaregmean_karamld  ) THEN
+            tmp_field_mat(:,:,16) = tmp_field_mat(:,:,16) + (hmld_kara(:,:)*tmask(:,:,1)) !mldkara
+        ENDIF
 
         name_dat_mat(16) = 'mldkara'
         

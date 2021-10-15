@@ -21,6 +21,9 @@ MODULE zdfmxl
    USE phycst         ! physical constants
    USE iom            ! I/O library
    USE lib_mpp        ! MPP library
+   !JT
+   USE lbclnk         ! (or mpp link)
+   !JT
 
    IMPLICIT NONE
    PRIVATE
@@ -35,6 +38,31 @@ MODULE zdfmxl
    REAL(wp), PUBLIC, ALLOCATABLE,       DIMENSION(:,:) ::   htc_mld    ! Heat content of hmld_zint
    LOGICAL, PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:)    :: ll_found   ! Is T_b to be found by interpolation ?
    LOGICAL, PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)  :: ll_belowml ! Flag points below mixed layer when ll_found=F
+
+   !JT
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   hmld_kara  !: mixed layer depth of Kara et al   [m]
+
+
+ 
+   ! Namelist variables for  namzdf_karaml 
+   LOGICAL   :: ln_kara            ! Logical switch for calculating kara mixed
+                                     ! layer
+   LOGICAL   :: ln_kara_write25h   ! Logical switch for 25 hour outputs
+   INTEGER   :: jpmld_type         ! mixed layer type             
+   REAL(wp)  :: ppz_ref            ! depth of initial T_ref 
+   REAL(wp)  :: ppdT_crit          ! Critical temp diff  
+   REAL(wp)  :: ppiso_frac         ! Fraction of ppdT_crit used 
+   
+   !Used for 25h mean
+   LOGICAL, PRIVATE :: kara_25h_init = .TRUE.   !Logical used to initalise 25h 
+                                                !outputs. Necissary, because we need to
+                                                !initalise the kara_25h on the zeroth
+                                                !timestep (i.e in the nemogcm_init call)
+   REAL, PRIVATE, ALLOCATABLE, DIMENSION(:,:) :: hmld_kara_25h
+
+
+
+   !JT
 
    REAL(wp), PUBLIC ::   rho_c = 0.01_wp    !: density criterion for mixed layer depth
    REAL(wp), PUBLIC ::   avt_c = 5.e-4_wp   ! Kz criterion for the turbocline depth
@@ -126,6 +154,10 @@ CONTAINS
          END DO
       END DO
       ! depth of the mixing and mixed layers
+      !JT
+      CALL zdf_mxl_kara( kt ) ! kara MLD
+      !JT
+
       DO jj = 1, jpj
          DO ji = 1, jpi
             iiki = imld(ji,jj)
@@ -487,6 +519,255 @@ CONTAINS
       ENDIF
 
    END SUBROUTINE zdf_mxl_zint
+
+
+
+   SUBROUTINE zdf_mxl_kara( kt ) 
+      !!---------------------------------------------------------------------------------- 
+      !!                    ***  ROUTINE zdf_mxl_kara  *** 
+      !                                                                        
+      !   Calculate mixed layer depth according to the definition of          
+      !   Kara et al, 2000, JGR, 105, 16803.  
+      ! 
+      !   If mld_type=1 the mixed layer depth is calculated as the depth at which the  
+      !   density has increased by an amount equivalent to a temperature difference of  
+      !   0.8C at the surface. 
+      ! 
+      !   For other values of mld_type the mixed layer is calculated as the depth at  
+      !   which the temperature differs by 0.8C from the surface temperature.  
+      !                                                                        
+      !   Original version: David Acreman                                      
+      ! 
+      !!-----------------------------------------------------------------------------------
+     
+      INTEGER, INTENT( in ) ::   kt   ! ocean time-step index 
+ 
+      NAMELIST/namzdf_karaml/ ln_kara,jpmld_type, ppz_ref, ppdT_crit, &
+      &                       ppiso_frac, ln_kara_write25h 
+ 
+      ! Local variables                                                        
+      REAL, DIMENSION(jpi,jpk) :: ppzdep      ! depth for use in calculating d(rho) 
+      REAL(wp), DIMENSION(jpi,jpj,jpts) :: ztsn_2d  !Local version of tsn 
+      LOGICAL :: ll_found(jpi,jpj)              ! Is T_b to be found by interpolation ? 
+      LOGICAL :: ll_belowml(jpi,jpj,jpk)        ! Flag points below mixed layer when ll_found=F 
+      INTEGER :: ji, jj, jk                     ! loop counter 
+      INTEGER :: ik_ref(jpi,jpj)                ! index of reference level 
+      INTEGER :: ik_iso(jpi,jpj)                ! index of last uniform temp level 
+      REAL    :: zT(jpi,jpj,jpk)                ! Temperature or denisty 
+      REAL    :: zT_ref(jpi,jpj)                ! reference temperature 
+      REAL    :: zT_b                           ! base temperature 
+      REAL    :: zdTdz(jpi,jpj,jpk-2)           ! gradient of zT 
+      REAL    :: zmoddT(jpi,jpj,jpk-2)          ! Absolute temperature difference 
+      REAL    :: zdz                            ! depth difference 
+      REAL    :: zdT                            ! temperature difference 
+      REAL    :: zdelta_T(jpi,jpj)              ! difference critereon 
+      REAL    :: zRHO1(jpi,jpj), zRHO2(jpi,jpj) ! Densities
+      INTEGER, SAVE :: idt, i_steps
+      INTEGER, SAVE :: i_cnt_25h     ! Counter for 25 hour means
+      INTEGER :: ios                 ! Local integer output status for namelist read
+
+     
+ 
+      !!------------------------------------------------------------------------------------- 
+ 
+      IF( kt == nit000 ) THEN 
+         ! Default values 
+         ln_kara      = .FALSE.
+         ln_kara_write25h = .FALSE. 
+         jpmld_type   = 1     
+         ppz_ref      = 10.0 
+         ppdT_crit    = 0.2  
+         ppiso_frac   = 0.1   
+         ! Read namelist
+         REWIND ( numnam_ref )
+         READ   ( numnam_ref, namzdf_karaml, IOSTAT=ios, ERR= 901 )
+901      IF( ios /= 0 ) CALL ctl_nam ( ios , 'namzdf_karaml in reference namelist' )
+
+         REWIND( numnam_cfg )              ! Namelist nam_diadiaop in configuration namelist  3D hourly diagnostics
+         READ  ( numnam_cfg,  namzdf_karaml, IOSTAT = ios, ERR = 902 )
+902      IF( ios > 0 ) CALL ctl_nam ( ios , 'namzdf_karaml in configuration namelist' )
+         IF(lwm) WRITE ( numond, namzdf_karaml )
+ 
+
+         WRITE(numout,*) '===== Kara mixed layer =====' 
+         WRITE(numout,*) 'ln_kara = ',    ln_kara
+         WRITE(numout,*) 'jpmld_type = ', jpmld_type 
+         WRITE(numout,*) 'ppz_ref = ',    ppz_ref 
+         WRITE(numout,*) 'ppdT_crit = ',  ppdT_crit 
+         WRITE(numout,*) 'ppiso_frac = ', ppiso_frac
+         WRITE(numout,*) 'ln_kara_write25h = ', ln_kara_write25h
+         WRITE(numout,*) '============================' 
+      
+         IF ( .NOT.ln_kara ) THEN
+            WRITE(numout,*) "ln_kara not set; Kara mixed layer not calculated" 
+         ELSE
+            IF (.NOT. ALLOCATED(hmld_kara) ) ALLOCATE( hmld_kara(jpi,jpj) )
+            IF ( ln_kara_write25h .AND. kara_25h_init ) THEN
+               i_cnt_25h = 0
+               IF (.NOT. ALLOCATED(hmld_kara_25h) ) &
+               &   ALLOCATE( hmld_kara_25h(jpi,jpj) )
+               hmld_kara_25h = 0._wp
+               !IF( nacc == 1 ) THEN
+               !   idt = INT(rdtmin)
+               !ELSE
+               !   idt = INT(rdt)
+               !ENDIF
+
+              idt = INT(rdt)
+               IF( MOD( 3600,idt) == 0 ) THEN 
+                  i_steps = 3600 / idt  
+               ELSE 
+                  CALL ctl_stop('STOP', &
+                  & 'zdf_mxl_kara: timestep must give MOD(3600,rdt)'// &
+                  & ' = 0 otherwise no hourly values are possible') 
+               ENDIF  
+            ENDIF
+         ENDIF
+      ENDIF
+      
+      IF ( ln_kara ) THEN
+         
+         !set critical ln_kara
+         ztsn_2d = tsn(:,:,1,:)
+         ztsn_2d(:,:,jp_tem) = ztsn_2d(:,:,jp_tem) + ppdT_crit
+     
+         ! Set the mixed layer depth criterion at each grid point 
+         ppzdep = 0._wp
+         IF( jpmld_type == 1 ) THEN                                         
+            CALL eos ( tsn(:,:,1,:), &
+            &          ppzdep(:,:), zRHO1(:,:) ) 
+            CALL eos ( ztsn_2d(:,:,:), &
+            &           ppzdep(:,:), zRHO2(:,:) ) 
+            zdelta_T(:,:) = abs( zRHO1(:,:) - zRHO2(:,:) ) * rau0 
+            ! RHO from eos (2d version) doesn't calculate north or east halo: 
+            CALL lbc_lnk( 'zdf_mxl_kara',zdelta_T, 'T', 1. ) 
+            zT(:,:,:) = rhop(:,:,:) 
+         ELSE 
+            zdelta_T(:,:) = ppdT_crit                      
+            zT(:,:,:) = tsn(:,:,:,jp_tem)                           
+         ENDIF 
+     
+         ! Calculate the gradient of zT and absolute difference for use later 
+         DO jk = 1 ,jpk-2 
+            zdTdz(:,:,jk)  =    ( zT(:,:,jk+1) - zT(:,:,jk) ) / e3w_n(:,:,jk+1) 
+            zmoddT(:,:,jk) = abs( zT(:,:,jk+1) - zT(:,:,jk) ) 
+         END DO 
+     
+         ! Find density/temperature at the reference level (Kara et al use 10m).          
+         ! ik_ref is the index of the box centre immediately above or at the reference level 
+         ! Find ppz_ref in the array of model level depths and find the ref    
+         ! density/temperature by linear interpolation.                                   
+         ik_ref = -1
+         DO jk = jpkm1, 2, -1 
+            WHERE( gdept_n(:,:,jk) > ppz_ref ) 
+               ik_ref(:,:) = jk - 1 
+               zT_ref(:,:) = zT(:,:,jk-1) + &
+               &             zdTdz(:,:,jk-1) * ( ppz_ref - gdept_n(:,:,jk-1) ) 
+            ENDWHERE 
+         END DO
+         IF ( ANY( ik_ref  < 0 ) .OR. ANY( ik_ref  > jpkm1 ) ) THEN
+            CALL ctl_stop( "STOP", &
+            & "zdf_mxl_kara: unable to find reference level for kara ML" ) 
+         ELSE
+            ! If the first grid box centre is below the reference level then use the 
+            ! top model level to get zT_ref 
+            WHERE( gdept_n(:,:,1) > ppz_ref )  
+               zT_ref = zT(:,:,1) 
+               ik_ref = 1 
+            ENDWHERE 
+     
+            ! Search for a uniform density/temperature region where adjacent levels          
+            ! differ by less than ppiso_frac * deltaT.                                      
+            ! ik_iso is the index of the last level in the uniform layer  
+            ! ll_found indicates whether the mixed layer depth can be found by interpolation 
+            ik_iso(:,:)   = ik_ref(:,:) 
+            ll_found(:,:) = .false. 
+            DO jj = 1, nlcj 
+               DO ji = 1, nlci 
+                 !CDIR NOVECTOR 
+                  DO jk = ik_ref(ji,jj), mbkt(ji,jj)-1  !mbathy(ji,jj)-1 
+                     IF( zmoddT(ji,jj,jk) > ( ppiso_frac * zdelta_T(ji,jj) ) ) THEN 
+                        ik_iso(ji,jj)   = jk 
+                        ll_found(ji,jj) = ( zmoddT(ji,jj,jk) > zdelta_T(ji,jj) ) 
+                        EXIT 
+                     ENDIF 
+                  END DO 
+               END DO 
+            END DO 
+     
+            ! Use linear interpolation to find depth of mixed layer base where possible 
+            hmld_kara(:,:) = ppz_ref 
+            DO jj = 1, jpj 
+               DO ji = 1, jpi 
+                  IF( ll_found(ji,jj) .and. tmask(ji,jj,1) == 1.0 ) THEN 
+                     zdz =  abs( zdelta_T(ji,jj) / zdTdz(ji,jj,ik_iso(ji,jj)) ) 
+                     hmld_kara(ji,jj) = gdept_n(ji,jj,ik_iso(ji,jj)) + zdz 
+                  ENDIF 
+               END DO 
+            END DO 
+     
+            ! If ll_found = .false. then calculate MLD using difference of zdelta_T    
+            ! from the reference density/temperature 
+     
+            ! Prevent this section from working on land points 
+            WHERE( tmask(:,:,1) /= 1.0 ) 
+               ll_found = .true. 
+            ENDWHERE 
+     
+            DO jk = 1, jpk 
+               ll_belowml(:,:,jk) = abs( zT(:,:,jk) - zT_ref(:,:) ) >= &
+               & zdelta_T(:,:)
+            END DO 
+     
+            ! Set default value where interpolation cannot be used (ll_found=false)  
+            DO jj = 1, jpj 
+               DO ji = 1, jpi 
+                  IF( .NOT. ll_found(ji,jj) )  &
+                  &   hmld_kara(ji,jj) = gdept_n(ji,jj,mbkt(ji,jj))! mbathy(ji,jj)) 
+               END DO 
+            END DO 
+     
+            DO jj = 1, jpj 
+               DO ji = 1, jpi 
+                  !CDIR NOVECTOR 
+                  DO jk = ik_ref(ji,jj)+1, mbkt(ji,jj) !mbathy(ji,jj) 
+                     IF( ll_found(ji,jj) ) EXIT 
+                     IF( ll_belowml(ji,jj,jk) ) THEN                
+                        zT_b = zT_ref(ji,jj) + zdelta_T(ji,jj) * &
+                        &      SIGN(1.0, zdTdz(ji,jj,jk-1) ) 
+                        zdT  = zT_b - zT(ji,jj,jk-1)                                      
+                        zdz  = zdT / zdTdz(ji,jj,jk-1)                                       
+                        hmld_kara(ji,jj) = gdept_n(ji,jj,jk-1) + zdz 
+                        EXIT                                                   
+                     ENDIF 
+                  END DO 
+               END DO 
+            END DO 
+     
+            hmld_kara(:,:) = hmld_kara(:,:) * tmask(:,:,1) 
+ 
+            IF(  ln_kara_write25h  ) THEN
+               !Double IF required as i_steps not defined if ln_kara_write25h =
+               ! FALSE
+               IF ( ( MOD( kt, i_steps ) == 0 ) .OR.  kara_25h_init ) THEN
+                  hmld_kara_25h = hmld_kara_25h + hmld_kara
+                  i_cnt_25h = i_cnt_25h + 1
+                  IF ( kara_25h_init ) kara_25h_init = .FALSE.
+               ENDIF
+            ENDIF
+ 
+!#if defined key_iomput 
+            IF( kt /= nit000 ) THEN 
+               CALL iom_put( "mldkara"  , hmld_kara )   
+               IF( ( MOD( i_cnt_25h, 25) == 0 ) .AND.  ln_kara_write25h ) &
+                  CALL iom_put( "kara25h"  , ( hmld_kara_25h / 25._wp ) )
+            ENDIF
+!#endif
+ 
+         ENDIF
+      ENDIF
+       
+   END SUBROUTINE zdf_mxl_kara 
 
    !!======================================================================
 END MODULE zdfmxl
