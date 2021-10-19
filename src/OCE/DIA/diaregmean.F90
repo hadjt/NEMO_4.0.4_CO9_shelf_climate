@@ -914,9 +914,9 @@ CONTAINS
       ! Local variables
       INTEGER, DIMENSION(jpi, jpj) :: internal_region_mask    ! Input 3d field and mask 
       REAL(wp), DIMENSION(jpi, jpj) :: internal_infield    ! Internal data field
-      REAL(wp), ALLOCATABLE, DIMENSION(:) ::   zrmet_ave,zrmet_tot,zrmet_var,zrmet_cnt,zrmet_mask_id,zrmet_reg_id  ,zrmet_min,zrmet_max
+      REAL(wp), ALLOCATABLE, DIMENSION(:) ::   zrmet_ave,zrmet_tot,zrmet_totarea,zrmet_var,zrmet_cnt,zrmet_mask_id,zrmet_reg_id  ,zrmet_min,zrmet_max
       REAL(wp), ALLOCATABLE, DIMENSION(:) ::   zrmet_out
-      REAL(wp), ALLOCATABLE,   DIMENSION(:) ::   ave_mat,tot_mat,num_mat,var_mat,ssq_mat,cnt_mat,reg_id_mat,mask_id_mat    !: region_mask
+      REAL(wp), ALLOCATABLE,   DIMENSION(:) ::   ave_mat,tot_mat,num_mat,var_mat,ssq_mat,cnt_mat,reg_id_mat,mask_id_mat,area_mat,totarea_mat    !: region_mask
       !REAL(wp), ALLOCATABLE,   DIMENSION(:) ::   min_mat,max_mat   !: region_mask
       
       REAL(wp)                         ::   zmdi, zrmet_val      ! set masked values
@@ -941,6 +941,8 @@ CONTAINS
         IF( ierr /= 0 )   CALL ctl_stop( 'dia_wri_region_mean: failed to allocate zrmet_ave array' )
       ALLOCATE( zrmet_tot(n_regions_output),  STAT= ierr )
         IF( ierr /= 0 )   CALL ctl_stop( 'dia_wri_region_mean: failed to allocate zrmet_tot array' )
+      ALLOCATE( zrmet_totarea(n_regions_output),  STAT= ierr )
+        IF( ierr /= 0 )   CALL ctl_stop( 'dia_wri_region_mean: failed to allocate zrmet_totarea array' )
       ALLOCATE( zrmet_var(n_regions_output),  STAT= ierr )
         IF( ierr /= 0 )   CALL ctl_stop( 'dia_wri_region_mean: failed to allocate zrmet_var array' )
       ALLOCATE( zrmet_cnt(n_regions_output),  STAT= ierr )
@@ -993,6 +995,7 @@ CONTAINS
       
       zrmet_ave(:) = zmdi
       zrmet_tot(:) = zmdi
+      zrmet_totarea(:) = zmdi
       zrmet_var(:) = zmdi
       zrmet_cnt(:) = zmdi
       zrmet_mask_id(:) = zmdi
@@ -1025,6 +1028,10 @@ CONTAINS
           IF( ierr /= 0 )   CALL ctl_stop( 'dia_wri_region_mean: failed to allocate ssq_mat array' )
           ALLOCATE( cnt_mat(nreg),  STAT= ierr )
           IF( ierr /= 0 )   CALL ctl_stop( 'dia_wri_region_mean: failed to allocate cnt_mat array' )
+          ALLOCATE( area_mat(nreg),  STAT= ierr )
+          IF( ierr /= 0 )   CALL ctl_stop( 'dia_wri_region_mean: failed to allocate area_mat array' )
+          ALLOCATE( totarea_mat(nreg),  STAT= ierr )
+          IF( ierr /= 0 )   CALL ctl_stop( 'dia_wri_region_mean: failed to allocate totarea_mat array' )
 
           !ALLOCATE( min_mat(nreg),  STAT= ierr )
           !IF( ierr /= 0 )   CALL ctl_stop( 'dia_wri_region_mean: failed to allocate min_mat array' )
@@ -1044,6 +1051,9 @@ CONTAINS
           var_mat(:) = 0.
           cnt_mat(:) = 0.
           ssq_mat(:) = 0.
+          area_mat(:) = 0.
+          totarea_mat(:) = 0.
+
 
           !min_mat(:) = zmdi
           !max_mat(:) = -zmdi
@@ -1064,9 +1074,11 @@ CONTAINS
                         !ssq_mat(ind) = ssq_mat(ind) + ( internal_infield(ji,jj) *  internal_infield(ji,jj))
                         !cnt_mat(ind) = cnt_mat(ind) + 1.
                         ! Area Weighted values - region_area_mat == 1. or area depending on ln_diaregmean_areawgt
-                        tot_mat(ind) = tot_mat(ind) + (region_area_mat(ji,jj)*internal_infield(ji,jj))
+                        totarea_mat(ind) = totarea_mat(ind) + (region_area_mat(ji,jj)*internal_infield(ji,jj))
+                        tot_mat(ind) = tot_mat(ind) + (internal_infield(ji,jj))
                         ssq_mat(ind) = ssq_mat(ind) + (region_area_mat(ji,jj)*(internal_infield(ji,jj) * internal_infield(ji,jj)))
-                        cnt_mat(ind) = cnt_mat(ind) + (region_area_mat(ji,jj)*1.)
+                        cnt_mat(ind) = cnt_mat(ind) + 1.
+                        area_mat(ind) = area_mat(ind) + (region_area_mat(ji,jj)*1.)
 
 
 
@@ -1081,6 +1093,10 @@ CONTAINS
           IF(lwp .AND. verbose) WRITE(numout,*) 'dia_wri_region_mean : '//tmp_name//'; finished mpp_sum tot'
           CALL mpp_sum( 'diaregionmean',cnt_mat,nreg )
           IF(lwp .AND. verbose) WRITE(numout,*) 'dia_wri_region_mean : '//tmp_name//'; finished mpp_sum cnt'
+          CALL mpp_sum( 'diaregionmean',area_mat,nreg )
+          IF(lwp .AND. verbose) WRITE(numout,*) 'dia_wri_region_mean : '//tmp_name//'; finished mpp_sum area'
+          CALL mpp_sum( 'diaregionmean',totarea_mat,nreg )
+          IF(lwp .AND. verbose) WRITE(numout,*) 'dia_wri_region_mean : '//tmp_name//'; finished mpp_sum totarea_mat'
 
 
 
@@ -1106,9 +1122,16 @@ CONTAINS
           !ENDIF
           
           !calculate the mean and variance from the total, sum of squares and the count. 
+          ! When area weighting, you can't area weight the total.
+          ! this if block may be redundant, as totarea_mat == tot_mat, and cnt_mat == area_mat when ln_diaregmean_areawgt == False
+          IF (ln_diaregmean_areawgt) THEN
+            ave_mat = totarea_mat(:)/area_mat(:)
+            var_mat = ssq_mat(:)/area_mat(:) - (ave_mat(:)*ave_mat(:))
+          ELSE
+            ave_mat = tot_mat(:)/cnt_mat(:)
+            var_mat = ssq_mat(:)/cnt_mat(:) - (ave_mat(:)*ave_mat(:))
+          ENDIF
           
-          ave_mat = tot_mat(:)/cnt_mat(:)
-          var_mat = ssq_mat(:)/cnt_mat(:) - (ave_mat(:)*ave_mat(:))
           
           
           !mask array of mask and region number. 
@@ -1157,6 +1180,7 @@ CONTAINS
           DO jm = 1,nreg
               zrmet_ave(    reg_ind_cnt) =     ave_mat(jm)
               zrmet_tot(    reg_ind_cnt) =     tot_mat(jm)
+              zrmet_totarea(    reg_ind_cnt) =     totarea_mat(jm)
               zrmet_var(    reg_ind_cnt) =     var_mat(jm)
               zrmet_cnt(    reg_ind_cnt) =     cnt_mat(jm)
               !zrmet_min(    reg_ind_cnt) =     min_mat(jm)
@@ -1169,7 +1193,7 @@ CONTAINS
       
         
           IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean about to deallocated arrays for ',kt,maskno
-          DEALLOCATE(ave_mat,tot_mat,num_mat,var_mat,ssq_mat,cnt_mat,reg_id_mat,mask_id_mat)
+          DEALLOCATE(ave_mat,tot_mat,num_mat,var_mat,ssq_mat,cnt_mat,reg_id_mat,mask_id_mat,totarea_mat, area_mat)
           !DEALLOCATE(min_mat,max_mat)
 
           IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean deallocated arrays for ',kt,maskno
@@ -1212,6 +1236,24 @@ CONTAINS
           IF (iom_use(trim(tmp_name_iom))) THEN
               DO jm = 1,n_regions_output
                 zrmet_val = zrmet_tot(jm)
+    !            if (zrmet_val .LT. -1e16) zrmet_val = -1e16
+    !            if (zrmet_val .GT. 1e16) zrmet_val = 1e16
+                if (zrmet_val .NE. zrmet_val) zrmet_val = 1e20
+                zrmet_out(jm) = zrmet_val
+              END DO
+              IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom), zrmet_out(1)
+              CALL iom_put( trim(tmp_name_iom), zrmet_out(:) ) 
+              zrmet_out(:) = 0
+              zrmet_val = 0
+              tmp_name_iom = ''
+          ENDIF
+
+
+
+          tmp_name_iom =  trim(trim("reg_") // trim(tmp_name) // trim('_totarea'))
+          IF (iom_use(trim(tmp_name_iom))) THEN
+              DO jm = 1,n_regions_output
+                zrmet_val = zrmet_totarea(jm)
     !            if (zrmet_val .LT. -1e16) zrmet_val = -1e16
     !            if (zrmet_val .GT. 1e16) zrmet_val = 1e16
                 if (zrmet_val .NE. zrmet_val) zrmet_val = 1e20
@@ -1336,7 +1378,7 @@ CONTAINS
 !          DEALLOCATE( dummy_zrmet)
       ENDIF
       
-      DEALLOCATE(zrmet_ave,zrmet_tot,zrmet_var,zrmet_cnt,zrmet_mask_id,zrmet_reg_id,zrmet_min,zrmet_max,zrmet_out)
+      DEALLOCATE(zrmet_ave,zrmet_tot,zrmet_totarea,zrmet_var,zrmet_cnt,zrmet_mask_id,zrmet_reg_id,zrmet_min,zrmet_max,zrmet_out)
 
       IF(lwp .AND. verbose) THEN                   ! Control print
          WRITE(numout,*) 
