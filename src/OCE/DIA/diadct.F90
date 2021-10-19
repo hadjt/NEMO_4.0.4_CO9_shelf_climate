@@ -83,6 +83,8 @@ MODULE diadct
   LOGICAL, PUBLIC ::   ln_NOOS
   LOGICAL, PUBLIC ::   ln_diadct
 
+  CHARACTER(len=60), PUBLIC ::  diadct_endian
+
   ! JT
 
   !! * Module variables
@@ -174,12 +176,16 @@ CONTAINS
      !!              Open output files
      !!
      !!---------------------------------------------------------------------
+
+     !
      NAMELIST/namdct/ln_diadct,ln_NOOS,nn_dct,ln_dct_h,ln_dct_ascii,nn_secdebug,ln_dct_calc_noos_day,ln_dct_calc_noos_hr,&
-             & nn_dct_iom_cont,ln_dct_day_25hr,ln_dct_verbose
+             & nn_dct_iom_cont,ln_dct_day_25hr,ln_dct_verbose,diadct_endian
      INTEGER           ::   ios,jsec        ! Local integer output status for namelist read
      CHARACTER(len=3)  ::   jsec_str        ! name of the jsec
      LOGICAL       ::   verbose     
      verbose = ln_dct_verbose!.false.
+
+     diadct_endian='BIG_ENDIAN'
 
      IF( ln_timing )   CALL timing_start('dia_dct_init')
 
@@ -648,7 +654,9 @@ CONTAINS
      INTEGER :: isec, iiglo, ijglo, iiloc, ijloc,iost,i1 ,i2  ! temporary  integer
      INTEGER :: jsec, jpt                                     ! dummy loop indices
      INTEGER                            :: ierr  ! error for allocate
-
+     !JT
+     INTEGER                            :: fsize, floc  ! exit section_ijglobal.diadct gracefully.
+     !JT
      INTEGER, DIMENSION(2) :: icoord 
      CHARACTER(len=160)    :: clname                          !filename
      CHARACTER(len=200)    :: cltmp
@@ -672,18 +680,36 @@ CONTAINS
      !OPEN(UNIT=107,FILE='section_ijglobal.diadct', FORM='UNFORMATTED', ACCESS='SEQUENTIAL', STATUS='OLD',convert='LITTLE_ENDIAN')
      
      IF ( verbose ) write(numout,*) 'dct low-level pre open: big endian :',nproc,narea
-     OPEN(UNIT=107,FILE='section_ijglobal.diadct', FORM='UNFORMATTED', ACCESS='SEQUENTIAL', STATUS='OLD',convert='BIG_ENDIAN')
-     
-     !write(numout,*) 'dct low-level pre open: SWAP '
-     !OPEN(UNIT=107,FILE='section_ijglobal.diadct', FORM='UNFORMATTED', ACCESS='SEQUENTIAL', STATUS='OLD',convert='SWAP')
-     
-     !write(numout,*) 'dct low-level pre open: NATIVE '
+
+
+     ! ok with Daleys set up (ifort?)
      !OPEN(UNIT=107,FILE='section_ijglobal.diadct', FORM='UNFORMATTED', ACCESS='SEQUENTIAL', STATUS='OLD',convert='NATIVE')
-     
+     !READ(107) isec
+     !CLOSE(107)
+     !IF( lwp .AND. verbose ) write(numout,*) 'diadct readsec: NATIVE, isec',isec
+
+     !ok with  Daleys set up (ifort?)
+     !OPEN(UNIT=107,FILE='section_ijglobal.diadct', FORM='UNFORMATTED', ACCESS='SEQUENTIAL', STATUS='OLD',convert='LITTLE_ENDIAN')
+     !READ(107) isec
+     !CLOSE(107)
+     !IF( lwp .AND. verbose ) write(numout,*) 'diadct readsec: LITTLE_ENDIAN, isec',isec
+
+
+     OPEN(UNIT=107,FILE='section_ijglobal.diadct', FORM='UNFORMATTED', ACCESS='SEQUENTIAL', STATUS='OLD',convert='BIG_ENDIAN')
      READ(107) isec
      CLOSE(107)
+     IF( lwp .AND. verbose ) write(numout,*) 'diadct readsec: BIG_ENDIAN, isec',isec
+
+     inquire(file='section_ijglobal.diadct',size=fsize)
      
      CALL ctl_opn( numdct_in, 'section_ijglobal.diadct', 'OLD', 'UNFORMATTED', 'SEQUENTIAL', -1, numout, .TRUE. )
+
+     !ok with  Daleys set up (ifort?)
+     !CLOSE(numdct_in)
+     !
+     !!OPEN(UNIT=numdct_in,FILE='section_ijglobal.diadct', FORM='UNFORMATTED', ACCESS='SEQUENTIAL', STATUS='OLD',convert='BIG_ENDIAN')
+     !
+     !OPEN(UNIT=numdct_in,FILE='section_ijglobal.diadct', FORM='UNFORMATTED', ACCESS='SEQUENTIAL', STATUS='OLD',convert=TRIM(diadct_endian))
  
      !---------------
      !Read input file
@@ -710,9 +736,24 @@ CONTAINS
         secs(jsec)%transport_h    =  0._wp
         secs(jsec)%nb_point       = 0
 
-        !read section's number / name / computing choices / classes / slopeSection / points number
-        !-----------------------------------------------------------------------------------------
-        
+
+!        ! ok with Daleys set up (ifort?)
+!        !read section's number / name / computing choices / classes / slopeSection / points number
+!        !-----------------------------------------------------------------------------------------
+!        !JT
+!        CALL FTELL(numdct_in, floc)
+!        
+!        IF( lwp .AND. verbose ) write(numout,*) 'diadct readsec: section_ijglobal.diadct size and location',fsize, floc
+!        !JT
+!        IF (floc .GE. fsize) THEN
+! 
+!            IF( lwp .AND. verbose )THEN
+!               write(numout,*) 'diadct readsec: End of section_ijglobal.diadct: Exiting Gracefully'
+!               write(numout,*) 'diadct readsec: section_ijglobal.diadct: size and location',fsize, floc
+!            ENDIF            
+!            EXIT 
+!        ENDIF
+
         READ(numdct_in,iostat=iost) isec
         IF (iost .NE. 0 ) then
           write(numout,*) 'reached end of section_ijglobal.diadct. iost = ',iost, &
@@ -1998,7 +2039,7 @@ CONTAINS
      REAL(wp), POINTER, DIMENSION(:):: zsumclasses ! 1D workspace 
      CHARACTER(len=3)      :: noos_sect_name             ! Classname 
      CHARACTER(len=25)      :: noos_var_sect_name
-     REAL(wp), ALLOCATABLE, DIMENSION(:,:,:) ::   noos_iom_dummy
+     REAL(wp), ALLOCATABLE, DIMENSION(:) ::   noos_iom_dummy
      INTEGER               :: IERR
      
      REAL(wp), DIMENSION(3) :: tmp_iom_output
@@ -2046,7 +2087,7 @@ CONTAINS
      
      IF ( nn_dct_iom_cont  .eq. 1) THEN
          max_iom_val = 1.e10
-         ALLOCATE( noos_iom_dummy(jpi,jpj,3),  STAT= ierr )
+         ALLOCATE( noos_iom_dummy(3),  STAT= ierr )
             IF( ierr /= 0 )   CALL ctl_stop( 'dia_dct_wri_NOOS: failed to allocate noos_iom_dummy array' )
      ENDIF
      
@@ -2087,7 +2128,7 @@ CONTAINS
     IF ( nn_dct_iom_cont .EQ. 1) THEN
          noos_var_sect_name = "noos_" // trim(noos_sect_name) // '_trans'
          IF (iom_use(noos_var_sect_name)) THEN
-             noos_iom_dummy(:,:,:) = 0.
+             noos_iom_dummy(:) = 0.
              tmp_iom_output(:) = 0.
              
              tmp_iom_output(1) = (zsumclasses( 1)+zsumclasses( 2))
@@ -2112,23 +2153,23 @@ CONTAINS
              if ( tmp_iom_output(2) .ne.  tmp_iom_output(2) ) tmp_iom_output(1) =  max_iom_val*2
              if ( tmp_iom_output(3) .ne.  tmp_iom_output(3) ) tmp_iom_output(1) =  max_iom_val*2
              
-             noos_iom_dummy(:,:,1) = tmp_iom_output(1)
-             noos_iom_dummy(:,:,2) = tmp_iom_output(2)
-             noos_iom_dummy(:,:,3) = tmp_iom_output(3)
+             noos_iom_dummy(1) = tmp_iom_output(1)
+             noos_iom_dummy(2) = tmp_iom_output(2)
+             noos_iom_dummy(3) = tmp_iom_output(3)
              
-             !noos_iom_dummy(:,:,1) = (zsumclasses( 1)+zsumclasses( 2))
-             !noos_iom_dummy(:,:,2) = zsumclasses( 1)
-             !noos_iom_dummy(:,:,3) = zsumclasses( 2)
+             !noos_iom_dummy(1) = (zsumclasses( 1)+zsumclasses( 2))
+             !noos_iom_dummy(2) = zsumclasses( 1)
+             !noos_iom_dummy(3) = zsumclasses( 2)
              
              
              
              if ( lwp .AND. verbose ) WRITE(numout,*) 'dia_dct_wri_NOOS iom_put: ', kt,ksec, noos_var_sect_name
-             CALL iom_put( noos_var_sect_name,  noos_iom_dummy )
+             CALL iom_put( noos_var_sect_name,  noos_iom_dummy(:) )
          ENDIF
 
          noos_var_sect_name =  "noos_" // trim(noos_sect_name) // '_heat'
          IF (iom_use(noos_var_sect_name)) THEN
-             noos_iom_dummy(:,:,:) = 0.
+             noos_iom_dummy(:) = 0.
              tmp_iom_output(:) = 0.
              
              tmp_iom_output(1) = (zsumclasses( 7)+zsumclasses( 8))
@@ -2153,21 +2194,21 @@ CONTAINS
              if ( tmp_iom_output(2) .ne.  tmp_iom_output(2) ) tmp_iom_output(1) =  max_iom_val*2
              if ( tmp_iom_output(3) .ne.  tmp_iom_output(3) ) tmp_iom_output(1) =  max_iom_val*2
              
-             noos_iom_dummy(:,:,1) = tmp_iom_output(1)
-             noos_iom_dummy(:,:,2) = tmp_iom_output(2)
-             noos_iom_dummy(:,:,3) = tmp_iom_output(3)
+             noos_iom_dummy(1) = tmp_iom_output(1)
+             noos_iom_dummy(2) = tmp_iom_output(2)
+             noos_iom_dummy(3) = tmp_iom_output(3)
              
-             !noos_iom_dummy(:,:,1) = (zsumclasses( 7)+zsumclasses( 8))
-             !noos_iom_dummy(:,:,2) = zsumclasses( 7)
-             !noos_iom_dummy(:,:,3) = zsumclasses( 8)
+             !noos_iom_dummy(1) = (zsumclasses( 7)+zsumclasses( 8))
+             !noos_iom_dummy(2) = zsumclasses( 7)
+             !noos_iom_dummy(3) = zsumclasses( 8)
              
              if ( lwp .AND. verbose ) WRITE(numout,*) 'dia_dct_wri_NOOS iom_put: ', kt,ksec, noos_var_sect_name
-             CALL iom_put(noos_var_sect_name,  noos_iom_dummy )  
+             CALL iom_put(noos_var_sect_name,  noos_iom_dummy(:) )  
          ENDIF
 
          noos_var_sect_name = "noos_" // trim(noos_sect_name) // '_salt'
          IF (iom_use(noos_var_sect_name)) THEN
-             noos_iom_dummy(:,:,:) = 0.
+             noos_iom_dummy(:) = 0.
              tmp_iom_output(:) = 0.
              
              tmp_iom_output(1) = (zsumclasses( 9)+zsumclasses( 10))
@@ -2193,17 +2234,17 @@ CONTAINS
              if ( tmp_iom_output(2) .ne.  tmp_iom_output(2) ) tmp_iom_output(1) =  max_iom_val*2
              if ( tmp_iom_output(3) .ne.  tmp_iom_output(3) ) tmp_iom_output(1) =  max_iom_val*2
              
-             noos_iom_dummy(:,:,1) = tmp_iom_output(1)
-             noos_iom_dummy(:,:,2) = tmp_iom_output(2)
-             noos_iom_dummy(:,:,3) = tmp_iom_output(3)
+             noos_iom_dummy(1) = tmp_iom_output(1)
+             noos_iom_dummy(2) = tmp_iom_output(2)
+             noos_iom_dummy(3) = tmp_iom_output(3)
              
-             !noos_iom_dummy(:,:,1) = (zsumclasses( 9)+zsumclasses( 10))
-             !noos_iom_dummy(:,:,2) = zsumclasses( 9)
-             !noos_iom_dummy(:,:,3) = zsumclasses( 10)
+             !noos_iom_dummy(1) = (zsumclasses( 9)+zsumclasses( 10))
+             !noos_iom_dummy(2) = zsumclasses( 9)
+             !noos_iom_dummy(3) = zsumclasses( 10)
              
              if ( lwp .AND. verbose ) WRITE(numout,*) 'dia_dct_wri_NOOS iom_put: ', kt,ksec, noos_var_sect_name
-             CALL iom_put(noos_var_sect_name,  noos_iom_dummy )
-             noos_iom_dummy(:,:,:) = 0.         
+             CALL iom_put(noos_var_sect_name,  noos_iom_dummy(:) )
+             noos_iom_dummy(:) = 0.         
              tmp_iom_output(:) = 0.
         ENDIF
 
@@ -2322,7 +2363,7 @@ CONTAINS
      REAL(wp), POINTER, DIMENSION(:):: zsumclasses ! 1D workspace 
      CHARACTER(len=3)      :: noos_sect_name             ! Classname 
      CHARACTER(len=25)      :: noos_var_sect_name
-     REAL(wp), ALLOCATABLE, DIMENSION(:,:,:) ::   noos_iom_dummy
+     REAL(wp), ALLOCATABLE, DIMENSION(:) ::   noos_iom_dummy
      INTEGER               :: IERR
      
      REAL(wp), DIMENSION(3) :: tmp_iom_output
@@ -2368,12 +2409,12 @@ CONTAINS
      
      !IF ( nn_dct_iom_cont .EQ. 2 ) THEN
      max_iom_val = 1.e10
-     ALLOCATE( noos_iom_dummy(jpi,jpj,3),  STAT= ierr )
+     ALLOCATE( noos_iom_dummy(3),  STAT= ierr )
         IF( ierr /= 0 )   CALL ctl_stop( 'dia_dct_wri_NOOS: failed to allocate noos_iom_dummy array' )
 
      noos_var_sect_name = "noos_" // trim(noos_sect_name) // '_trans'
      IF (iom_use(noos_var_sect_name)) THEN
-         noos_iom_dummy(:,:,:) = 0.
+         noos_iom_dummy(:) = 0.
          tmp_iom_output(:) = 0.
          
          tmp_iom_output(1) = (zsumclasses( 1)+zsumclasses( 2))
@@ -2398,23 +2439,23 @@ CONTAINS
          if ( tmp_iom_output(2) .ne.  tmp_iom_output(2) ) tmp_iom_output(1) =  max_iom_val*2
          if ( tmp_iom_output(3) .ne.  tmp_iom_output(3) ) tmp_iom_output(1) =  max_iom_val*2
          
-         noos_iom_dummy(:,:,1) = tmp_iom_output(1)
-         noos_iom_dummy(:,:,2) = tmp_iom_output(2)
-         noos_iom_dummy(:,:,3) = tmp_iom_output(3)
+         noos_iom_dummy(1) = tmp_iom_output(1)
+         noos_iom_dummy(2) = tmp_iom_output(2)
+         noos_iom_dummy(3) = tmp_iom_output(3)
          
-         !noos_iom_dummy(:,:,1) = (zsumclasses( 1)+zsumclasses( 2))
-         !noos_iom_dummy(:,:,2) = zsumclasses( 1)
-         !noos_iom_dummy(:,:,3) = zsumclasses( 2)
+         !noos_iom_dummy(1) = (zsumclasses( 1)+zsumclasses( 2))
+         !noos_iom_dummy(2) = zsumclasses( 1)
+         !noos_iom_dummy(3) = zsumclasses( 2)
          
          
          
          if ( lwp .AND. verbose ) WRITE(numout,*) 'dia_dct_wri_NOOS iom_put: ', kt,ksec, noos_var_sect_name,tmp_iom_output(1)
-         CALL iom_put( noos_var_sect_name,  noos_iom_dummy  )
+         CALL iom_put( noos_var_sect_name,  noos_iom_dummy(:)  )
      ENDIF
 
      noos_var_sect_name =  "noos_" // trim(noos_sect_name) // '_heat'
      IF (iom_use(noos_var_sect_name)) THEN
-         noos_iom_dummy(:,:,:) = 0.
+         noos_iom_dummy(:) = 0.
          tmp_iom_output(:) = 0.
          
          tmp_iom_output(1) = (zsumclasses( 7)+zsumclasses( 8))
@@ -2439,21 +2480,21 @@ CONTAINS
          if ( tmp_iom_output(2) .ne.  tmp_iom_output(2) ) tmp_iom_output(1) =  max_iom_val*2
          if ( tmp_iom_output(3) .ne.  tmp_iom_output(3) ) tmp_iom_output(1) =  max_iom_val*2
          
-         noos_iom_dummy(:,:,1) = tmp_iom_output(1)
-         noos_iom_dummy(:,:,2) = tmp_iom_output(2)
-         noos_iom_dummy(:,:,3) = tmp_iom_output(3)
+         noos_iom_dummy(1) = tmp_iom_output(1)
+         noos_iom_dummy(2) = tmp_iom_output(2)
+         noos_iom_dummy(3) = tmp_iom_output(3)
          
-         !noos_iom_dummy(:,:,1) = (zsumclasses( 7)+zsumclasses( 8))
-         !noos_iom_dummy(:,:,2) = zsumclasses( 7)
-         !noos_iom_dummy(:,:,3) = zsumclasses( 8)
+         !noos_iom_dummy(1) = (zsumclasses( 7)+zsumclasses( 8))
+         !noos_iom_dummy(2) = zsumclasses( 7)
+         !noos_iom_dummy(3) = zsumclasses( 8)
          
          if ( lwp .AND. verbose ) WRITE(numout,*) 'dia_dct_wri_NOOS iom_put: ', kt,ksec, noos_var_sect_name,tmp_iom_output(1)
-         CALL iom_put(noos_var_sect_name,  noos_iom_dummy )  
+         CALL iom_put(noos_var_sect_name,  noos_iom_dummy(:) )  
      ENDIF
 
      noos_var_sect_name = "noos_" // trim(noos_sect_name) // '_salt'
      IF (iom_use(noos_var_sect_name)) THEN
-         noos_iom_dummy(:,:,:) = 0.
+         noos_iom_dummy(:) = 0.
          tmp_iom_output(:) = 0.
          
          tmp_iom_output(1) = (zsumclasses( 9)+zsumclasses( 10))
@@ -2479,17 +2520,17 @@ CONTAINS
          if ( tmp_iom_output(2) .ne.  tmp_iom_output(2) ) tmp_iom_output(1) =  max_iom_val*2
          if ( tmp_iom_output(3) .ne.  tmp_iom_output(3) ) tmp_iom_output(1) =  max_iom_val*2
          
-         noos_iom_dummy(:,:,1) = tmp_iom_output(1)
-         noos_iom_dummy(:,:,2) = tmp_iom_output(2)
-         noos_iom_dummy(:,:,3) = tmp_iom_output(3)
+         noos_iom_dummy(1) = tmp_iom_output(1)
+         noos_iom_dummy(2) = tmp_iom_output(2)
+         noos_iom_dummy(3) = tmp_iom_output(3)
          
-         !noos_iom_dummy(:,:,1) = (zsumclasses( 9)+zsumclasses( 10))
-         !noos_iom_dummy(:,:,2) = zsumclasses( 9)
-         !noos_iom_dummy(:,:,3) = zsumclasses( 10)
+         !noos_iom_dummy(1) = (zsumclasses( 9)+zsumclasses( 10))
+         !noos_iom_dummy(2) = zsumclasses( 9)
+         !noos_iom_dummy(3) = zsumclasses( 10)
          
          if ( lwp .AND. verbose ) WRITE(numout,*) 'dia_dct_wri_NOOS iom_put: ', kt,ksec, noos_var_sect_name,tmp_iom_output(1)
-         CALL iom_put(noos_var_sect_name,  noos_iom_dummy  )
-         noos_iom_dummy(:,:,:) = 0.         
+         CALL iom_put(noos_var_sect_name,  noos_iom_dummy(:)  )
+         noos_iom_dummy(:) = 0.         
          tmp_iom_output(:) = 0.
     ENDIF
 
@@ -2530,7 +2571,7 @@ CONTAINS
      REAL(wp), POINTER, DIMENSION(:):: zsumclasses ! 1D workspace 
      CHARACTER(len=3)      :: noos_sect_name             ! Classname 
      CHARACTER(len=25)      :: noos_var_sect_name
-     REAL(wp), ALLOCATABLE, DIMENSION(:,:,:) ::   noos_iom_dummy
+     REAL(wp), ALLOCATABLE, DIMENSION(:) ::   noos_iom_dummy
      INTEGER               :: IERR
      LOGICAL       ::   verbose     
      verbose = ln_dct_verbose! .false.
@@ -2550,7 +2591,7 @@ CONTAINS
      
      write (noos_sect_name, "(I03)")  ksec
      
-     ALLOCATE( noos_iom_dummy(jpi,jpj,3),  STAT= ierr )
+     ALLOCATE( noos_iom_dummy(3),  STAT= ierr )
         IF( ierr /= 0 )   CALL ctl_stop( 'dia_dct_wri_NOOS_h: failed to allocate noos_iom_dummy array' )
 
 

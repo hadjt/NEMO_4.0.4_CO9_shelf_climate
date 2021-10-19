@@ -915,7 +915,7 @@ CONTAINS
       INTEGER, DIMENSION(jpi, jpj) :: internal_region_mask    ! Input 3d field and mask 
       REAL(wp), DIMENSION(jpi, jpj) :: internal_infield    ! Internal data field
       REAL(wp), ALLOCATABLE, DIMENSION(:) ::   zrmet_ave,zrmet_tot,zrmet_var,zrmet_cnt,zrmet_mask_id,zrmet_reg_id  ,zrmet_min,zrmet_max
-      REAL(wp), ALLOCATABLE, DIMENSION(:,:,:) ::   zrmet_out
+      REAL(wp), ALLOCATABLE, DIMENSION(:) ::   zrmet_out
       REAL(wp), ALLOCATABLE,   DIMENSION(:) ::   ave_mat,tot_mat,num_mat,var_mat,ssq_mat,cnt_mat,reg_id_mat,mask_id_mat    !: region_mask
       !REAL(wp), ALLOCATABLE,   DIMENSION(:) ::   min_mat,max_mat   !: region_mask
       
@@ -956,7 +956,7 @@ CONTAINS
       ALLOCATE( zrmet_max(n_regions_output),  STAT= ierr )
         IF( ierr /= 0 )   CALL ctl_stop( 'dia_wri_region_mean: failed to allocate zrmet_max array' )
       
-      ALLOCATE( zrmet_out(jpi,jpj,n_regions_output),  STAT= ierr )
+      ALLOCATE( zrmet_out(n_regions_output),  STAT= ierr )
         IF( ierr /= 0 )   CALL ctl_stop( 'dia_wri_region_mean: failed to allocate zrmet_reg_id array' )
 
   
@@ -1151,21 +1151,22 @@ CONTAINS
                   WRITE(numdct_reg_txt, FMT=trim(FormatString)) trim(tmp_name)//" "//"msk_mat:", mask_id_mat
 
               ENDIF
-              
-              DO jm = 1,nreg
-                  zrmet_ave(    reg_ind_cnt) =     ave_mat(jm)
-                  zrmet_tot(    reg_ind_cnt) =     tot_mat(jm)
-                  zrmet_var(    reg_ind_cnt) =     var_mat(jm)
-                  zrmet_cnt(    reg_ind_cnt) =     cnt_mat(jm)
-                  !zrmet_min(    reg_ind_cnt) =     min_mat(jm)
-                  !zrmet_max(    reg_ind_cnt) =     max_mat(jm)
-                  zrmet_reg_id( reg_ind_cnt) =  reg_id_mat(jm)
-                  zrmet_mask_id(reg_ind_cnt) = mask_id_mat(jm)
-                
-                  reg_ind_cnt = reg_ind_cnt + 1 
-              END DO
-          
           ENDIF
+              
+          ! JT Fixed, was not meant to be inside the lwp if block
+          DO jm = 1,nreg
+              zrmet_ave(    reg_ind_cnt) =     ave_mat(jm)
+              zrmet_tot(    reg_ind_cnt) =     tot_mat(jm)
+              zrmet_var(    reg_ind_cnt) =     var_mat(jm)
+              zrmet_cnt(    reg_ind_cnt) =     cnt_mat(jm)
+              !zrmet_min(    reg_ind_cnt) =     min_mat(jm)
+              !zrmet_max(    reg_ind_cnt) =     max_mat(jm)
+              zrmet_reg_id( reg_ind_cnt) =  reg_id_mat(jm)
+              zrmet_mask_id(reg_ind_cnt) = mask_id_mat(jm)
+            
+              reg_ind_cnt = reg_ind_cnt + 1 
+          END DO
+      
         
           IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean about to deallocated arrays for ',kt,maskno
           DEALLOCATE(ave_mat,tot_mat,num_mat,var_mat,ssq_mat,cnt_mat,reg_id_mat,mask_id_mat)
@@ -1185,7 +1186,7 @@ CONTAINS
       
       IF ( ln_diaregmean_nc ) THEN
       
-          zrmet_out(:,:,:) = 0
+          zrmet_out(:) = 0
           zrmet_val = 0
           tmp_name_iom = ''
 
@@ -1198,11 +1199,11 @@ CONTAINS
     !            if (zrmet_val .LT. -1e16) zrmet_val = -1e16
     !            if (zrmet_val .GT. 1e16) zrmet_val = 1e16
                 if (zrmet_val .NE. zrmet_val) zrmet_val = 1e20
-                zrmet_out(:,:,jm) = zrmet_val
+                zrmet_out(jm) = zrmet_val
               END DO      
-              IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom), zrmet_out(1,1,1)
-              CALL iom_put(trim(tmp_name_iom), zrmet_out ) !zrmet_out(1,1,:) ) )
-              zrmet_out(:,:,:) = 0
+              IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom), zrmet_out(1)
+              CALL iom_put(trim(tmp_name_iom), zrmet_out(:) ) 
+              zrmet_out(:) = 0
               zrmet_val = 0
               tmp_name_iom = ''
           ENDIF
@@ -1214,11 +1215,11 @@ CONTAINS
     !            if (zrmet_val .LT. -1e16) zrmet_val = -1e16
     !            if (zrmet_val .GT. 1e16) zrmet_val = 1e16
                 if (zrmet_val .NE. zrmet_val) zrmet_val = 1e20
-                zrmet_out(:,:,jm) = zrmet_val
+                zrmet_out(jm) = zrmet_val
               END DO
-              IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom), zrmet_out(1,1,1)
-              CALL iom_put( trim(tmp_name_iom), zrmet_out ) !zrmet_out(1,1,:) ) )
-              zrmet_out(:,:,:) = 0
+              IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom), zrmet_out(1)
+              CALL iom_put( trim(tmp_name_iom), zrmet_out(:) ) 
+              zrmet_out(:) = 0
               zrmet_val = 0
               tmp_name_iom = ''
           ENDIF
@@ -1230,11 +1231,11 @@ CONTAINS
     !            if (zrmet_val .LT. -1e16) zrmet_val = -1e16
     !            if (zrmet_val .GT. 1e16) zrmet_val = 1e16
                 if (zrmet_val .NE. zrmet_val) zrmet_val = 1e20
-                zrmet_out(:,:,jm) = zrmet_val
+                zrmet_out(jm) = zrmet_val
               END DO
-              IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom), zrmet_out(1,1,1)
-              CALL iom_put( trim(tmp_name_iom), zrmet_out ) !zrmet_out(1,1,:) ) )
-              zrmet_out(:,:,:) = 0
+              IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom), zrmet_out(1)
+              CALL iom_put( trim(tmp_name_iom), zrmet_out(:) )
+              zrmet_out(:) = 0
               zrmet_val = 0
               tmp_name_iom = ''
           ENDIF
@@ -1246,11 +1247,11 @@ CONTAINS
     !            if (zrmet_val .LT. -1e16) zrmet_val = -1e16
     !            if (zrmet_val .GT. 1e16) zrmet_val = 1e16
                 if (zrmet_val .NE. zrmet_val) zrmet_val = 1e20
-                zrmet_out(:,:,jm) = zrmet_val
+                zrmet_out(jm) = zrmet_val
               END DO
-              IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom), zrmet_out(1,1,1)
-              CALL iom_put( trim(tmp_name_iom), zrmet_out ) !zrmet_out(1,1,:) ) )
-              zrmet_out(:,:,:) = 0
+              IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom), zrmet_out(1)
+              CALL iom_put( trim(tmp_name_iom), zrmet_out(:) )
+              zrmet_out(:) = 0
               zrmet_val = 0
               tmp_name_iom = ''
           ENDIF
@@ -1262,11 +1263,11 @@ CONTAINS
     !            if (zrmet_val .LT. -1e16) zrmet_val = -1e16
     !            if (zrmet_val .GT. 1e16) zrmet_val = 1e16
                 if (zrmet_val .NE. zrmet_val) zrmet_val = 1e20
-                zrmet_out(:,:,jm) = zrmet_val
+                zrmet_out(jm) = zrmet_val
               END DO
-              IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom), zrmet_out(1,1,1)
-              CALL iom_put( trim(tmp_name_iom), zrmet_out ) !zrmet_out(1,1,:) ) )
-              zrmet_out(:,:,:) = 0
+              IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom), zrmet_out(1)
+              CALL iom_put( trim(tmp_name_iom), zrmet_out(:) ) 
+              zrmet_out(:) = 0
               zrmet_val = 0
               tmp_name_iom = ''
           ENDIF
@@ -1278,11 +1279,11 @@ CONTAINS
     !            if (zrmet_val .LT. -1e16) zrmet_val = -1e16
     !            if (zrmet_val .GT. 1e16) zrmet_val = 1e16
                 if (zrmet_val .NE. zrmet_val) zrmet_val = 1e20
-                zrmet_out(:,:,jm) = zrmet_val
+                zrmet_out(jm) = zrmet_val
               END DO
               IF(lwp .AND. verbose) WRITE(numout,*) 'dia_regmean iom_put tmp_name_iom : ',trim(tmp_name_iom)          
-              CALL iom_put( trim(tmp_name_iom), zrmet_out ) !zrmet_out(1,1,:) ) )
-              zrmet_out(:,:,:) = 0
+              CALL iom_put( trim(tmp_name_iom), zrmet_out(:) )
+              zrmet_out(:) = 0
               zrmet_val = 0
               tmp_name_iom = ''
           ENDIF
