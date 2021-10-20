@@ -159,7 +159,7 @@ CONTAINS
       ENDIF
       
       IF(ln_diaregmean_diasbc) THEN   
-        ALLOCATE( tmp_field_SBC_mat(jpi,jpj,7),  STAT= ierr ) !SBC terms
+        ALLOCATE( tmp_field_SBC_mat(jpi,jpj,9),  STAT= ierr ) !SBC terms
             IF( ierr /= 0 )   CALL ctl_stop( 'tmp_field_SBC_mat: failed to allocate tmp_field_SBC_mat array' )
         tmp_field_SBC_mat(:,:,:) = 0.
       ENDIF
@@ -493,13 +493,13 @@ CONTAINS
       CHARACTER (len=120)                ::    tmp_name
       CHARACTER (len=120), DIMENSION(19) ::    name_dat_mat
       CHARACTER (len=120), DIMENSION(4)  ::    name_AR5_mat
-      CHARACTER (len=120), DIMENSION(7)  ::    name_SBC_mat
+      CHARACTER (len=120), DIMENSION(9)  ::    name_SBC_mat
       CHARACTER (len=120), DIMENSION(4)  ::    name_HSCM_mat
       INTEGER                            ::    vi     
       LOGICAL                            ::    do_reg_mean
       REAL(wp), DIMENSION(19)            ::    output_mulitpler_dat_mat
       REAL(wp), DIMENSION(4)             ::    output_mulitpler_AR5_mat
-      REAL(wp), DIMENSION(7)             ::    output_mulitpler_SBC_mat
+      REAL(wp), DIMENSION(9)             ::    output_mulitpler_SBC_mat
       REAL(wp), DIMENSION(4)             ::    output_mulitpler_HSVM_mat
 
 
@@ -690,6 +690,12 @@ CONTAINS
             name_SBC_mat(6) = 'mslp'
             tmp_field_SBC_mat(:,:,7) = tmp_field_SBC_mat(:,:,7) + (rnf*tmask(:,:,1))
             name_SBC_mat(7) = 'rnf'
+
+            tmp_field_SBC_mat(:,:,8) = tmp_field_SBC_mat(:,:,8) + (emp*tmask(:,:,1)*tsn(:,:,1,jp_tem)*3850.)
+            name_SBC_mat(8) = 'empheat'
+            tmp_field_SBC_mat(:,:,9) = tmp_field_SBC_mat(:,:,9) + (rnf*tmask(:,:,1)*tsn(:,:,1,jp_tem)*3850.)
+            name_SBC_mat(9) = 'rnfheat'
+
         ENDIF
 
         output_mulitpler_dat_mat(:) = 1.
@@ -722,6 +728,7 @@ CONTAINS
                IF ( do_reg_mean ) THEN
                    IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
                      & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
+                     & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_totheat'))))    .OR. &
                      & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
                      & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
                      & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
@@ -745,6 +752,7 @@ CONTAINS
                 tmp_name=TRIM( name_HSCM_mat(vi) ) // trim('_inst')
                 IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
                   & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
+                  & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_totarea'))))    .OR. &
                   & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
                   & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
                   & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
@@ -762,6 +770,7 @@ CONTAINS
                     tmp_name=TRIM( name_AR5_mat(vi) )
                     IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
                       & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
+                      & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_totarea'))))    .OR. &
                       & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
                       & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
                       & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
@@ -775,11 +784,12 @@ CONTAINS
             ENDIF
 
             IF( ln_diaregmean_diasbc  ) THEN
-                DO vi=1,7 ! State loop
+                DO vi=1,9 ! State loop
 
                     tmp_name=TRIM( name_SBC_mat(vi) )
                     IF (iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_ave'))))    .OR. &
                       & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_tot'))))    .OR. &
+                      & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_totarea'))))    .OR. &
                       & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_var'))))    .OR. &
                       & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_cnt'))))    .OR. &
                       & iom_use(trim( trim(trim("reg_") // trim(tmp_name) // trim('_reg_id')))) .OR. &
@@ -1121,7 +1131,7 @@ CONTAINS
               !IF(lwp .AND. verbose) WRITE(numout,*) 'dia_wri_region_mean : '//tmp_name//'; finished mpp_max'
           !ENDIF
           
-          !calculate the mean and variance from the total, sum of squares and the count. 
+          ! calculate the mean and variance from the total, sum of squares and the count. 
           ! When area weighting, you can't area weight the total.
           ! this if block may be redundant, as totarea_mat == tot_mat, and cnt_mat == area_mat when ln_diaregmean_areawgt == False
           IF (ln_diaregmean_areawgt) THEN
