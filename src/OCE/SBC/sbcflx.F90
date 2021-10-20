@@ -190,12 +190,21 @@ CONTAINS
                ENDIF
                !JT                   
                qsr (ji,jj) = sf(jp_qsr )%fnow(ji,jj,1)                                * tmask(ji,jj,1)
-               !utau(ji,jj) =   sf(jp_utau)%fnow(ji,jj,1)                              * umask(ji,jj,1)
-               !vtau(ji,jj) =   sf(jp_vtau)%fnow(ji,jj,1)                              * vmask(ji,jj,1)
-               !JT qns (ji,jj) = ( sf(jp_qtot)%fnow(ji,jj,1) - sf(jp_qsr)%fnow(ji,jj,1) ) * tmask(ji,jj,1)
-               qns (ji,jj) = ( sf(jp_qtot)%fnow(ji,jj,1) - qsr (ji,jj)              ) * tmask(ji,jj,1)
-               emp (ji,jj) =   sf(jp_emp )%fnow(ji,jj,1)                              * tmask(ji,jj,1)
-               !!sfx (ji,jj) = sf(jp_sfx )%fnow(ji,jj,1)                              * tmask(ji,jj,1) 
+               IF( ln_shelf_flx ) THEN
+                  !! UKMO FOAM flux files contain non-solar heat flux (qns) rather than total heat flux (qtot)
+                  qns (ji,jj) = (sf(jp_qtot)%fnow(ji,jj,1)) * tmask(ji,jj,1)
+                  !! UKMO FOAM flux files contain the net DOWNWARD freshwater flux P-E rather then E-P
+                  emp (ji,jj) = (-1. * sf(jp_emp )%fnow(ji,jj,1)) * tmask(ji,jj,1)
+               ELSE
+                  qns (ji,jj) = (sf(jp_qtot)%fnow(ji,jj,1) - sf(jp_qsr)%fnow(ji,jj,1)) * tmask(ji,jj,1)
+                  emp (ji,jj) = (sf(jp_emp )%fnow(ji,jj,1)) * tmask(ji,jj,1)
+               ENDIF
+!               !utau(ji,jj) =   sf(jp_utau)%fnow(ji,jj,1)                              * umask(ji,jj,1)
+!               !vtau(ji,jj) =   sf(jp_vtau)%fnow(ji,jj,1)                              * vmask(ji,jj,1)
+!               !JT qns (ji,jj) = ( sf(jp_qtot)%fnow(ji,jj,1) - sf(jp_qsr)%fnow(ji,jj,1) ) * tmask(ji,jj,1)
+!               qns (ji,jj) = ( sf(jp_qtot)%fnow(ji,jj,1) - qsr (ji,jj)              ) * tmask(ji,jj,1)
+!               emp (ji,jj) =   sf(jp_emp )%fnow(ji,jj,1)                              * tmask(ji,jj,1)
+!               !!sfx (ji,jj) = sf(jp_sfx )%fnow(ji,jj,1)                              * tmask(ji,jj,1) 
             END DO
          END DO
          !                                                        ! add to qns the heat due to e-p
