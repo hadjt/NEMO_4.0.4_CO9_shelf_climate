@@ -137,10 +137,10 @@ CONTAINS
                   END DO
                ENDIF
             ENDIF
-            ! JT
-            ! JT CALL iom_put( "qrp", qrp )                             ! heat flux damping
-            ! JT
-            !
+            CALL iom_put( "qrp", qrp )                             ! heat flux damping
+            CALL iom_put( "hny_frc1", hny_frc1)                             ! heat flux damping
+            CALL iom_put( "hny_frc2", hny_frc2 )                             ! heat flux damping
+
             IF( nn_sssr /= 0 .AND. nn_sssr_ice /= 1 ) THEN
               ! use fraction of ice ( fr_i ) to adjust relaxation under ice if nn_sssr_ice .ne. 1
               ! n.b. coefice is initialised and fixed to 1._wp if nn_sssr_ice = 1
