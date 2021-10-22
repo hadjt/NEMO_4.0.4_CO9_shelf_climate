@@ -1257,13 +1257,15 @@ CONTAINS
 !                 transports_3d(3,jsec,jseg,jk) = transports_3d(3,jsec,jseg,jk)  + zTnorm * zrhop
 !                 !transports_3d(4,jsec,jseg,jk) = transports_3d(4,jsec,jseg,jk)  + zTnorm * 4.e+3_wp * (ztn+273.15) * 1026._wp
 !                 transports_3d(4,jsec,jseg,jk) = transports_3d(4,jsec,jseg,jk)  + zTnorm * 3850.0 * (ztn) * zrhop ! # 1026._wp !rhop(ji,jj,jk)
+!                 transports_3d(4,jsec,jseg,jk) = transports_3d(4,jsec,jseg,jk)  + zTnorm * rcp * (ztn) * zrhop ! # 1026._wp !rhop(ji,jj,jk)
 !                 !transports_3d(5,jsec,jseg,jk) = transports_3d(5,jsec,jseg,jk)  + zTnorm * 0.001 * zsn * 1026._wp
 !                 transports_3d(5,jsec,jseg,jk) = transports_3d(5,jsec,jseg,jk)  + zTnorm * 0.001 * zsn * zrhop
 
 
                  transports_3d_inst(2,jsec,jseg,jk) =  zTnorm * zrhoi
                  transports_3d_inst(3,jsec,jseg,jk) =  zTnorm * zrhop
-                 transports_3d_inst(4,jsec,jseg,jk) =  zTnorm * 3850.0 * (ztn) * zrhop ! # 1026._wp !rhop(ji,jj,jk)
+                 !transports_3d_inst(4,jsec,jseg,jk) =  zTnorm * 3850.0 * (ztn) * zrhop ! # 1026._wp !rhop(ji,jj,jk)
+                 transports_3d_inst(4,jsec,jseg,jk) =  zTnorm * rcp * (ztn) * zrhop ! # 1026._wp !rhop(ji,jj,jk)
                  transports_3d_inst(5,jsec,jseg,jk) =  zTnorm * 0.001 * zsn * zrhop
 
 
@@ -1533,7 +1535,8 @@ CONTAINS
                  transports_3d_h(2,jsec,jseg,jk) = transports_3d_h(2,jsec,jseg,jk)  + zTnorm * zrhoi
                  transports_3d_h(3,jsec,jseg,jk) = transports_3d_h(3,jsec,jseg,jk)  + zTnorm * zrhop
                  !transports_3d_h(4,jsec,jseg,jk) = transports_3d_h(4,jsec,jseg,jk)  + zTnorm * 4.e+3_wp * (ztn+273.15) * 1026._wp
-                 transports_3d_h(4,jsec,jseg,jk) = transports_3d_h(4,jsec,jseg,jk)  + zTnorm * 3850.0 * (ztn) * zrhop
+                 !transports_3d_h(4,jsec,jseg,jk) = transports_3d_h(4,jsec,jseg,jk)  + zTnorm * 3850.0 * (ztn) * zrhop
+                 transports_3d_h(4,jsec,jseg,jk) = transports_3d_h(4,jsec,jseg,jk)  + zTnorm * rcp * (ztn) * zrhop
                  !transports_3d_h(5,jsec,jseg,jk) = transports_3d_h(5,jsec,jseg,jk)  + zTnorm * 0.001 * zsn * 1026._wp
                  transports_3d_h(5,jsec,jseg,jk) = transports_3d_h(5,jsec,jseg,jk)  + zTnorm * 0.001 * zsn * zrhop
               ENDIF

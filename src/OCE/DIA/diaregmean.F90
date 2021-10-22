@@ -9,6 +9,7 @@ MODULE diaregmean
    USE dom_oce         ! ocean space and time domain
    USE in_out_manager  ! I/O units
    USE iom             ! I/0 library
+   USE phycst          ! physical constants
    USE diapea          ! PEA
    USE zdfmxl          ! MLD
    USE sbc_oce
@@ -588,7 +589,8 @@ CONTAINS
         !JT CALL wrk_dealloc( jpi , jpj, jpk , tmp1mat )
         DEALLOCATE(  tmp1mat )
 
-        tmp_field_HSVM_mat(:,:,1) = (zwtmbT(:,:,6)*tmask(:,:,1)*3850.) !heat 4200 is value for FW, 3850 is the value for sea water. 
+        !tmp_field_HSVM_mat(:,:,1) = (zwtmbT(:,:,6)*tmask(:,:,1)*3850.) !heat 3850/4200 is value for FW, 3850 is the value for sea
+        tmp_field_HSVM_mat(:,:,1) = (zwtmbT(:,:,6)*tmask(:,:,1)*rcp) !heat 4200 is value for FW, 3850 is the value for sea water. 
         tmp_field_HSVM_mat(:,:,2) = (zwtmbS(:,:,6)*tmask(:,:,1))       !salt
         tmp_field_HSVM_mat(:,:,3) = (zwtmb1(:,:,5)*tmask(:,:,1))       !vol
         tmp_field_HSVM_mat(:,:,4) = (zwtmb1(:,:,6)*tmask(:,:,1))       !mass
@@ -691,9 +693,11 @@ CONTAINS
             tmp_field_SBC_mat(:,:,7) = tmp_field_SBC_mat(:,:,7) + (rnf*tmask(:,:,1))
             name_SBC_mat(7) = 'rnf'
 
-            tmp_field_SBC_mat(:,:,8) = tmp_field_SBC_mat(:,:,8) + (emp*tmask(:,:,1)*tsn(:,:,1,jp_tem)*3850.)
+            !tmp_field_SBC_mat(:,:,8) = tmp_field_SBC_mat(:,:,8) + (emp*tmask(:,:,1)*tsn(:,:,1,jp_tem)*3850.)
+            tmp_field_SBC_mat(:,:,8) = tmp_field_SBC_mat(:,:,8) + (emp*tmask(:,:,1)*tsn(:,:,1,jp_tem)*rcp)
             name_SBC_mat(8) = 'empheat'
-            tmp_field_SBC_mat(:,:,9) = tmp_field_SBC_mat(:,:,9) + (rnf*tmask(:,:,1)*tsn(:,:,1,jp_tem)*3850.)
+            !tmp_field_SBC_mat(:,:,9) = tmp_field_SBC_mat(:,:,9) + (rnf*tmask(:,:,1)*tsn(:,:,1,jp_tem)*3850.)
+            tmp_field_SBC_mat(:,:,9) = tmp_field_SBC_mat(:,:,9) + (rnf*tmask(:,:,1)*tsn(:,:,1,jp_tem)*rcp)
             name_SBC_mat(9) = 'rnfheat'
 
         ENDIF
