@@ -79,10 +79,8 @@ CONTAINS
       REAL(wp) ::   zchl, zcoef, zsi0r   ! temporary scalars
       REAL(wp) ::   zc0, zc1, zc2, zc3   !    -         -
       !JT
-      REAL(wp) ::   hbatt
+      REAL(wp), DIMENSION(jpi,jpj) ::   hbatt, qsr_tradwl
       !JT
-      REAL(wp), DIMENSION(jpi,jpj)     ::   zekb, zekg, zekr            ! 2D workspace
-      REAL(wp), DIMENSION(jpi,jpj,jpk) ::   ze0, ze1 , ze2, ze3, zea    ! 3D workspace
       !!----------------------------------------------------------------------
       !! HERE GO VARIABLES USED IN POLCOMS CLEAN UP LATER
 
@@ -119,61 +117,45 @@ CONTAINS
 !  Convert Heat fluxes to units used in POL subroutine dwl
 !
 !---------------------------------------------------------------------------
-      cp=3986.0d0
+    !cp=3986.0d0
 
     DO jj = 2, jpj
          DO ji = fs_2, fs_jpim1
-           qsr(ji,jj)  = qsr(ji,jj)  * (r1_rau0_rcp)
+           qsr_tradwl(ji,jj)  = qsr(ji,jj)  * (r1_rau0_rcp)
          ENDDO       !ji
     ENDDO            !jj
 !--------------------------------------------------------------------------------
-      if ( first ) then
+ 
+
+   if ( first ) then
+    do jj=2,jpjm1
+      do ji = fs_2, fs_jpim1 
+          IF ( tmask(ji,jj,1) .EQ. 1) THEN ! if land
+            hbatt(ji,jj) = sum( e3t_n(ji,jj,:)*tmask(ji,jj,:) )
+        else
+            hbatt(ji,jj)= 0.
+        endif
+      enddo ! ji
+    enddo ! jj
+
+   !CALL iom_put('hbatt_tradwl', hbatt(:,:) )
+
         rlambda2(:,:) = 0.0
         first=.false.
         if ( ln_vary_lambda ) then
-!        do j=1,jesub    ! Original Polcoms style Loop
-!          do i=1,iesub  ! Original Polcoms style Loop
 
         do jj=2,jpjm1
           do ji = fs_2, fs_jpim1   ! vector opt. 
-              if (tmask(ji,jj,0) == 1)  then   
-
-!             if(ipexb(i,j).ne. 0) then  (Mask, use Tmask instead)
+              !IF ( tmask(ji,jj,1) .EQ. 1) THEN ! if land
 
 
-              !JT
-              !hbatt = gdept_n(ji,jj, k_bot(ji,jj) ) 
-              hbatt = sum( e3t_n(ji,jj,:)*tmask(ji,jj,:) )
-
-              rlambda2(ji,jj)=-0.033*log(hbatt)+0.2583    ! JIAs formula
-              !JT
-
-
-              !JT rlambda2(ji,jj)=-0.033*log(hbatt(ji,jj))+0.2583    ! JIAs formula
+              rlambda2(ji,jj)=-0.033*log(hbatt(ji,jj))+0.2583    ! JIAs formula
               rlambda2(ji,jj)=max(0.05,rlambda2(ji,jj))     ! limit in deep water
               rlambda2(ji,jj)=min(0.25,rlambda2(ji,jj))     ! Catch the infinities, from very shallow water/land. 10cm = 0.25
 
-              !WRITE(*,300) 'JT tradwl:',jj,ji,njmpp,jpjglo,nimpp,jpiglo,narea, hbatt, rlambda2(ji,jj)
-!300 FORMAT(A14,1X,I4,1X,I4,1X,I5,1X,I5,1X,I5,1X,I5,1X,I5,1X,f9.3,1X,f9.2)
-
-
-!              WRITE(*,300) 'JT tradwl:',jj,ji,njmpp+jj,nimpp+ji,njmpp,nimpp,narea, hbatt, rlambda2(ji,jj)
-               !domain size jpjglo,,jpiglo
-               !lower lhs of each sub-domain = nimpp,njmpp
-               ! index on the global domain??? add or subtract one?? = njmpp+jj,nimpp+ji
-!300 FORMAT(A14,1X,I4,1X,I4,1X,I5,1X,I5,1X,I5,1X,I5,1X,I5,1X,f9.3,1X,f9.2)
-
-
-!              if (kt == 1) WRITE(*,300) 'JT tradwl:',njmpp+jj,nimpp+ji, hbatt, rlambda2(ji,jj)
-               !domain size jpjglo,,jpiglo
-               !lower lhs of each sub-domain = nimpp,njmpp
-               ! index on the global domain??? add or subtract one?? = njmpp+jj,nimpp+ji
-!300 FORMAT(A14,1X,I4,1X,I4,1X,f9.3,1X,f9.2)
-
-
-            else
-                rlambda2(ji,jj)= 0.25
-            endif
+            !else
+            !    rlambda2(ji,jj)= 0.25
+            !endif
           enddo ! ji
         enddo ! jj
         rlambda = 0.0
@@ -182,22 +164,23 @@ CONTAINS
        endif ! If vary lambda
       endif ! If first
 
-!      do j=1,jesub      ! Original Polcoms Style Loop
-!        do i=1,iesub    ! Original Polcoms Style Loop
+      ! CALL iom_put('rlambda2_tradwl', rlambda2(:,:) )
+
       DO jk=2,jpk
          DO jj=2,jpjm1
             DO ji = fs_2, fs_jpim1   ! vector opt.
 
-              if (tmask(ji,jj,0) == 1)  then   
+              IF ( tmask(ji,jj,1) .EQ. 1) THEN ! if land
+
     !--------------------------------------------------------------------
     ! Calculate change in temperature
     !--------------------------------------------------------------------
     !
     !        rad0 = hfl_in(i,j)   ! change hfl_in to qsr I assume
 
-                    rad0 = qsr(ji,jj)
+                    rad0 = qsr_tradwl(ji,jj)
                     rD = rLambda2(ji,jj)  +rLambda      !  Transmissivity to be used here
-    !       if rlambda 0 then rlambda2 not zer and vica versa 
+                          !       if rlambda 0 then rlambda2 not zer and vica versa 
 
                     z2=gdepw_0(ji,jj,jk-1)    ! grid box is from z=z1 to z=z2
                     z1=gdepw_0(ji,jj,jk)
@@ -208,7 +191,7 @@ CONTAINS
 
                     dtmp(jk)=1.0/(e3t_0(ji,jj,jk))*(Rad2-Rad1) !change in temperature
                     tsa(ji,jj,jk,jp_tem) = tsa(ji,jj,jk,jp_tem) + dtmp(jk)
-                endif
+                endif ! if land
             enddo  ! ji
          enddo  ! jj
       enddo !jk
@@ -248,8 +231,6 @@ CONTAINS
       REAL(wp) ::   zc0  , zc1            ! temporary scalars
       REAL(wp) ::   zc2  , zc3  , zchl    !    -         -
       REAL(wp) ::   zsi0r, zsi1r, zcoef   !    -         -
-      REAL(wp), DIMENSION(jpi,jpj)     ::   zekb, zekg, zekr              ! 2D workspace
-      REAL(wp), DIMENSION(jpi,jpj,jpk) ::   ze0 , ze1 , ze2 , ze3 , zea   ! 3D workspace
       !!
       CHARACTER(len=100) ::   cn_dir   ! Root directory for location of ssr files
       TYPE(FLD_N)        ::   sn_chl   ! informations about the chlorofyl field to be read
