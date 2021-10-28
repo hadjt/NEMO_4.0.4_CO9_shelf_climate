@@ -173,8 +173,8 @@ CONTAINS
       TYPE(OBC_INDEX),              INTENT(in) ::   idx  ! OBC indices
       TYPE(OBC_DATA),               INTENT(in) ::   dta  ! OBC external data
       INTEGER,                      INTENT(in) ::   ib_bdy  ! BDY set index
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pua2d, pva2d
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pssh, phur, phvr
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) :: pua2d, pva2d     ! JT After barotropic velocities
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pssh, phur, phvr  ! JT SSH after, and phur, phvr = inverse of depth of water 
       LOGICAL                     , INTENT(in) ::   llrim0   ! indicate if rim 0 is treated
       INTEGER  ::   ibeg, iend                       ! length of rim to be treated (rim 0 or rim 1)
       INTEGER  ::   jb, igrd                         ! dummy loop indices
