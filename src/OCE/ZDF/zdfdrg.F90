@@ -124,7 +124,7 @@ CONTAINS
 !!JC: possible WAD implementation should modify line below if layers vanish
                zcd = (  vkarmn / LOG( zzz / pz0 )  )**2
                zcd = pCd0(ji,jj) * MIN(  MAX( pCdmin , zcd ) , pCdmax  )   ! here pCd0 = mask*boost
-               pCdU(ji,jj) = - zcd * SQRT(  0.25 * ( zut*zut + zvt*zvt ) + pke0  )
+               pCdU(ji,jj) = - zcd * SQRT(  0.25 * ( zut*zut + zvt*zvt ) + pke0  )   !! = -zcd*zecu  !zecu = SQRT(  un(ji,jj,ikbu) * un(ji,jj,ikbu) + zvu*zvu + rn_bfeb2  )
             END DO
          END DO
       ELSE                                            !==  standard Cd  ==!

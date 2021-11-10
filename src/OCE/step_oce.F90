@@ -82,6 +82,9 @@ MODULE step_oce
    USE diahth          ! thermocline depth                (dia_hth routine)
    USE diahsb          ! heat, salt and volume budgets    (dia_hsb routine)
    USE diaharm
+!--- NB for restart hamonic analysis
+   USE diaharm_fast     ! harmonic analysis of tides (harm_ana routine) 
+!--- END NB -----------------------------------
    USE diaprod
    USE diacfl
    USE diaobs          ! Observation operator

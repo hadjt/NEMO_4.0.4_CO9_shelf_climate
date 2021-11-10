@@ -206,6 +206,10 @@ CONTAINS
                          CALL dia_ar5 ( kstp )        ! ar5 diag
       IF( ln_diaptr  )   CALL dia_ptr                 ! Poleward adv/ldf TRansports diagnostics
       IF( ln_diaharm )   CALL dia_harm( kstp )        ! Tidal harmonic analysis
+      ! NB - new harmonic analysis 
+      IF( lk_diaharm_fast )                           &
+            &            CALL dia_harm_fast( kstp )   ! Tidal harmonic analysis - restart and faster version
+      ! END NB
                          CALL dia_prod( kstp )        ! ocean model: product diagnostics
                          CALL dia_wri ( kstp )        ! ocean model: outputs
       !
