@@ -95,6 +95,9 @@ CONTAINS
       ENDIF
       !
       CALL tide_init_Wave
+      ! JT Read namelist for 360 day tides, and calc astro angles for origin if using tide compress option
+      CALL tide_init_calendar_options
+      ! JT
       !
       nb_harmo=0
       DO jk = 1, jpmax_harmo

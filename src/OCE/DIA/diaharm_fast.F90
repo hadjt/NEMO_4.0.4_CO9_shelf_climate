@@ -133,7 +133,7 @@ CONTAINS
       INTEGER  :: ji, jk, jj          ! dummy loop arguments
       INTEGER  :: jh, i1, i2, jgrid
       INTEGER  :: j2d, j3d
-      REAL(WP) :: sec2start
+      REAL(WP) :: sec2start,sec2start_old
       CHARACTER (len=40) :: tmp_name
       !!--------------------------------------------------------------------
 
@@ -143,8 +143,13 @@ CONTAINS
 
 
       IF ( ln_diaharm_update_nodal_daily ) THEN
-         IF (MOD(kt,nint(86400./rdt)) == 0) THEN
+         !IF (MOD(kt,nint(86400./rdt)) == 0) THEN
+
+
+         IF( nsec_day == NINT(0.5_wp * rdt) .OR. kt == nit000 ) THEN      
             DO jh = 1, nb_ana
+               !JT anau(jh) = 3.141579*utide ( ntide_sub(jh) )/180.
+               !JT anav(jh) = 3.141579*v0tide( ntide_sub(jh) )/180.
                anau(jh) = utide ( ntide_sub(jh) )
                anav(jh) = v0tide( ntide_sub(jh) )
                anaf(jh) = ftide ( ntide_sub(jh) )
@@ -193,12 +198,15 @@ CONTAINS
           nhm=2*nb_ana+1
           c(1) = 1.0
 
-          sec2start = nint( (fjulday-fjulday_startharm)*86400._wp ) 
+          sec2start_old = nint( (fjulday-fjulday_startharm)*86400._wp ) 
+          sec2start = nsec_day - NINT(0.5_wp * rdt)
           !IF(lwp) WRITE(numout,*) "ztime NEW", kt, sec2start, fjulday_startharm
 
           DO jh=1,nb_ana
              c(2*jh  ) = anaf(jh)*cos( sec2start*om_tide(jh) + anau(jh) + anav(jh) )
              c(2*jh+1) = anaf(jh)*sin( sec2start*om_tide(jh) + anau(jh) + anav(jh) )
+             
+             IF(lwp) WRITE(numout,*) 'diaharm_fast: analwave,',kt,tname(jh),sec2start,sec2start/3600.,sec2start_old,sec2start_old/3600,c(2*jh),c(2*jh+1),om_tide(jh),anau(jh),anav(jh)
           ENDDO 
 
           !IF(lwp) WRITE(numout,*) "c init", c, "c end", sec2start, om_tide(1), anau(1), anav(1),"end nodal"
@@ -377,6 +385,8 @@ CONTAINS
       lk_diaharm_2D    = .TRUE.   ! to run 2d
       lk_diaharm_3D    = .TRUE.   ! to run 3d
 
+      ln_diaharm_store = .TRUE.
+
       IF(lwp) WRITE(numout,*)
       IF(lwp) WRITE(numout,*) 'harm_init : initialization of harmonic analysis of tides'
       IF(lwp) WRITE(numout,*) '~~~~~~~~~'
@@ -448,7 +458,6 @@ CONTAINS
       ENDIF
 
       ! JT
-
 
 
       ! GET NUMBER OF HARMONIC TO ANALYSE - from diaharm.F90
@@ -621,6 +630,7 @@ CONTAINS
                 END DO
 
                 fjulday_startharm=fjulday !Set this at very start and store
+                !JT this is a mistake - only works on daily cycles, should use fjulnsec_dayday
 
                 IF (lwp) THEN
                    WRITE(numout,*) '--------------------------'
@@ -628,7 +638,10 @@ CONTAINS
                    WRITE(numout,*) 'ANA F', anaf
                    WRITE(numout,*) 'ANA U', anau
                    WRITE(numout,*) 'ANA V', anav
-                   WRITE(numout,*) fjulday_startharm
+                   WRITE(numout,*) 'fjulday',fjulday
+                   WRITE(numout,*) 'fjulday_startharm',fjulday_startharm
+                   WRITE(numout,*) 'nsec_day',nsec_day
+                   WRITE(numout,*) 'kt',kt
                    WRITE(numout,*) '--------------------------'
                 ENDIF
 
@@ -778,6 +791,7 @@ CONTAINS
              tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'amp_'//TRIM(suffix)
              IF( iom_use(TRIM(tmp_name)) )  THEN
                 IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(h_out2D)
+                IF(lwp) WRITE(numout,*) "harm_ana_out_names", tmp_name,tname(jh),' ',om_tide(jh), (2*rpi/3600.)/om_tide(jh),"hr"
                 CALL iom_put( TRIM(tmp_name), h_out2D(:,:) )
              ELSE
                 IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)

@@ -20,6 +20,7 @@ MODULE tide_mod
 
    PUBLIC   tide_harmo       ! called by tideini and diaharm modules
    PUBLIC   tide_init_Wave   ! called by tideini and diaharm modules
+   PUBLIC   tide_init_calendar_options   ! called by tideini and diaharm modules
 
    ! davbyr: increase maximum number of harmonics from 19 to 34
    INTEGER, PUBLIC, PARAMETER ::   jpmax_harmo = 34   !: maximum number of harmonic
@@ -38,6 +39,13 @@ MODULE tide_mod
    REAL(wp) ::   sh_T, sh_s, sh_h, sh_p, sh_p1             ! astronomic angles
    REAL(wp) ::   sh_xi, sh_nu, sh_nuprim, sh_nusec, sh_R   !
    REAL(wp) ::   sh_I, sh_x1ra, sh_N                       !
+
+
+   !JT origin angles
+   REAL(wp) ::   sh_T_o, sh_s_o, sh_h_o, sh_p_o, sh_p1_o, sh_N_o                ! astronomic angles
+   !REAL(wp) ::   sh_xi_o, sh_nu_o, sh_nuprim_o, sh_nusec_o, sh_R_o   !
+   !REAL(wp) ::   sh_I_o, sh_x1ra_o                    !
+   !JT origin angles
 
    !!JT
    INTEGER(KIND=8)  ::  days_since_origin
@@ -62,18 +70,7 @@ CONTAINS
    END SUBROUTINE tide_init_Wave
 
 
-   SUBROUTINE tide_harmo( pomega, pvt, put , pcor, ktide ,kc)
-
-      !! Externally called by sbctide.F90/sbc_tide
-      !! Externally named: omega_tide, v0tide, utide, ftide, ntide, nb_harmo
-      !!----------------------------------------------------------------------
-      !!----------------------------------------------------------------------
-      INTEGER , DIMENSION(kc), INTENT(in ) ::   ktide            ! Indice of tidal constituents
-      INTEGER                , INTENT(in ) ::   kc               ! Total number of tidal constituents
-      REAL(wp), DIMENSION(kc), INTENT(out) ::   pomega           ! pulsation in radians/s
-      REAL(wp), DIMENSION(kc), INTENT(out) ::   pvt, put, pcor   !
-      !!----------------------------------------------------------------------
-      !
+   SUBROUTINE tide_init_calendar_options
 
       INTEGER                              ::   ios
 
@@ -142,9 +139,95 @@ CONTAINS
           WRITE(numout,*) "       tides360: Gregorian calendar so using standard tides"
       ENDIF
 
+      IF ( ln_tide_compress   )  CALL astronomic_angle_origin
+
+   END SUBROUTINE tide_init_calendar_options
+
+
+   SUBROUTINE tide_harmo( pomega, pvt, put , pcor, ktide ,kc)
+
+      !! Externally called by sbctide.F90/sbc_tide
+      !! Externally named: omega_tide, v0tide, utide, ftide, ntide, nb_harmo
+      !!----------------------------------------------------------------------
+      !!----------------------------------------------------------------------
+      INTEGER , DIMENSION(kc), INTENT(in ) ::   ktide            ! Indice of tidal constituents
+      INTEGER                , INTENT(in ) ::   kc               ! Total number of tidal constituents
+      REAL(wp), DIMENSION(kc), INTENT(out) ::   pomega           ! pulsation in radians/s
+      REAL(wp), DIMENSION(kc), INTENT(out) ::   pvt, put, pcor   !
+      !!----------------------------------------------------------------------
+      !
+
+!      INTEGER                              ::   ios
+
+
+!      ln_tide_drift = .FALSE.
+!      ln_tide_compress = .FALSE.
+
+!      NAMELIST/nam_tides360/ ln_tide_drift,ln_tide_compress,ln_astro_verbose,&
+!        & nn_tide_orig_yr,nn_tide_orig_mn,nn_tide_orig_dy
+
+!      ! read in Namelist. 
+!      !!----------------------------------------------------------------------
+!      !
+!      REWIND ( numnam_ref )              ! Read Namelist nam_diatmb in referdiatmbence namelist : TMB diagnostics
+!      READ   ( numnam_ref, nam_tides360, IOSTAT=ios, ERR= 901 )
+!901   IF( ios /= 0 ) CALL ctl_nam ( ios , 'nam_tides360 in reference namelist' )
+
+!      REWIND( numnam_cfg )              ! Namelist nam_diatmb in configuration namelist  TMB diagnostics
+!      READ  ( numnam_cfg, nam_tides360, IOSTAT = ios, ERR = 902 )
+!902   IF( ios > 0 ) CALL ctl_nam ( ios , 'nam_tides360 in configuration namelist' )
+!      IF(lwm) WRITE ( numond, nam_tides360 )
+
+
+!      IF( lwp ) THEN
+!        WRITE(numout,*) " "
+!        WRITE(numout,*) "tide_harmo: nam_tides360 - 360 day tides "
+!        WRITE(numout,*) "~~~~~~~~~~~~~~~~~~~~~"
+!        WRITE(numout,*) "       tides360: allow tides to drift through year: ln_tide_drift = ",ln_tide_drift
+!        WRITE(numout,*) "       tides360: Compress tides, so around a 360 day year: ln_tide_compress = ",ln_tide_compress
+!        WRITE(numout,*) "       tides360:           USE ln_tide_compress  WITH CARE. INCOMPLETE."
+!        WRITE(numout,*) "       tides360: Increase output verbosity: ln_astro_verbose = ",ln_astro_verbose
+!        !WRITE(numout,*) "       tides360: Calculate time between origin and gregorian and 360 manually: ln_tide_drift_time_cont_manual = ",ln_tide_drift_time_cont_manual
+!        WRITE(numout,*) "       tides360: 360 day origin date year: nn_tide_orig_yr = ",nn_tide_orig_yr
+!        WRITE(numout,*) "       tides360: 360 day origin date month: nn_tide_orig_mn = ",nn_tide_orig_mn
+!        WRITE(numout,*) "       tides360: 360 day origin date day: nn_tide_orig_dy = ",nn_tide_orig_dy
+!        WRITE(numout,*) " "
+!      ENDIF
+
+! 
+!      IF( nleapy == 30 ) THEN
+!          IF ( ln_tide_drift .AND. ln_tide_compress ) THEN
+!              CALL ctl_stop( 'tide_harmo: nam_tides360: if 360 day calendar ln_tide_drift and ln_tide_compress cannot be true' )
+!          ENDIF
+!          
+
+!          IF ( ln_tide_drift   ) THEN
+!              WRITE(numout,*) "       tides360: Tides continuous so equinoctal tides drift through the year,"
+!              WRITE(numout,*) "                 as the S2-K2 beating occurs 5 days later every year."
+!          ENDIF
+
+!          IF ( ln_tide_compress   ) THEN
+!              WRITE(numout,*) "       tides360: The Tropical Year (and so some tidal periods) are compressed,"
+!              WRITE(numout,*) "                 so the tides repeat with an annual cycle, so the "
+!              WRITE(numout,*) "                 the S2-K2 beating is fixed relative to the calendar, but the "
+!              WRITE(numout,*) "                 M2 period varies slightly."
+!              WRITE(numout,*) "                 Use with care, as this requires more work."
+!          ENDIF
+
+!          IF ( ( .NOT. ln_tide_drift  ) .AND. ( .NOT. ln_tide_compress ) ) THEN
+!              WRITE(numout,*) "       tides360: Use the default NEMO tide code, where the tides are reset "
+!              WRITE(numout,*) "                 at the beginning of each month, leading to a slight discontinuity"
+!              WRITE(numout,*) "                 in the tides, and making tidal analysis difficult."
+!          ENDIF
+
+!      ELSE        
+!          WRITE(numout,*) "       tides360: Gregorian calendar so using standard tides"
+!      ENDIF
+    
       CALL astronomic_angle
       CALL tide_pulse( pomega, ktide ,kc )
       CALL tide_vuf  ( pvt, put, pcor, ktide ,kc )
+
       !
    END SUBROUTINE tide_harmo
 
@@ -262,18 +345,12 @@ CONTAINS
       INTEGER  ::  init_yr, day_in_init_yr,nleap,init_doy
       INTEGER  ::  init_doy_inc_l,yg_is_leap_mod,doy_grg
       INTEGER,DIMENSION(12) ::  idayt, idays
-      INTEGER  ::   inc, ji
-      INTEGER  ::   ios
+      !INTEGER  ::    ji
 
-
-      INTEGER  ::   yr_grg_2, mn_grg_2, dy_grg_2
-      REAL(wp) ::   sec_grg_2
-      REAL(wp) ::   fjulday_org       !: current julian day 
+      !REAL(wp) ::   fjulday_org       !: current julian day 
       ! REAL(wp) ::   days_since_origin_ymds2ju
       INTEGER(KIND=8) ::   days_since_origin_ymds2ju_int
 
-      REAL(wp) ::   current_one_year
-      REAL(wp) ::   tmpju
 
 
       REAL(wp) ::   jul_org_greg,jul_org_360,jul_pres_360
@@ -553,11 +630,11 @@ CONTAINS
         days_since_origin = days_since_origin_ymds2ju_int
 
         
-        IF (ln_tide_compress) THEN        
-            yr_wrk = nyear
-            mn_wrk = nmonth
-            dy_wrk = nday
-        ENDIF
+        !IF (ln_tide_compress) THEN        
+        !    yr_wrk = nyear
+        !    mn_wrk = nmonth
+        !    dy_wrk = nday
+        !ENDIF
 
       ELSE
 
@@ -670,6 +747,155 @@ CONTAINS
    END SUBROUTINE astronomic_angle
 
 
+
+
+
+
+   SUBROUTINE astronomic_angle_origin
+      !!----------------------------------------------------------------------
+      !!  tj is time elapsed since 1st January 1900, 0 hour, counted in julian
+      !!  century (e.g. time in days divide by 36525)
+      !!----------------------------------------------------------------------
+      REAL(wp) ::   cosI, p, q, t2, t4, sin2I, s2, tgI2, P1, sh_tgn2, at1, at2
+      REAL(wp) ::   zqy , zsy, zday, zdj, zhfrac
+
+      
+    
+   
+
+    ! New variables defined for new code
+      INTEGER  ::   yr_wrk,mn_wrk,dy_wrk            !JT
+
+    
+
+      ! for gregorian calendars, work with the model gregorian dates
+      yr_wrk = nn_tide_orig_yr
+      mn_wrk = nn_tide_orig_mn
+      dy_wrk = nn_tide_orig_dy
+
+
+      !
+      zqy = AINT( (yr_wrk-1901.)/4. )        ! leap years since 1901
+      zsy = yr_wrk - 1900.                   ! years since 1900
+      !
+      zdj  = dayjul( yr_wrk, mn_wrk, dy_wrk )  ! day number of year
+      zday = zdj + zqy - 1.                 ! day number of year + No of leap yrs
+                                            ! i.e. what would doy if every year = 365 day??
+      !
+      zhfrac = nsec_day / 3600.             ! The seconds of the day/3600
+
+       
+      !
+      !----------------------------------------------------------------------
+      !  Sh_n Longitude of ascending lunar node
+      !----------------------------------------------------------------------
+      sh_N_o=(259.1560564-19.328185764*zsy-.0529539336*zday-.0022064139*zhfrac)*rad
+      !----------------------------------------------------------------------
+      ! T mean solar angle (Greenwhich time)
+      !----------------------------------------------------------------------
+      sh_T_o=(180.+zhfrac*(360./24.))*rad
+      !----------------------------------------------------------------------
+      ! h mean solar Longitude
+      !----------------------------------------------------------------------
+      sh_h_o=(280.1895014-.238724988*zsy+.9856473288*zday+.0410686387*zhfrac)*rad
+      !----------------------------------------------------------------------
+      ! s mean lunar Longitude
+      !----------------------------------------------------------------------
+      sh_s_o=(277.0256206+129.38482032*zsy+13.176396768*zday+.549016532*zhfrac)*rad
+      !----------------------------------------------------------------------
+      ! p1 Longitude of solar perigee
+      !----------------------------------------------------------------------
+      sh_p1_o=(281.2208569+.01717836*zsy+.000047064*zday+.000001961*zhfrac)*rad
+      !----------------------------------------------------------------------
+      ! p Longitude of lunar perigee
+      !----------------------------------------------------------------------
+      sh_p_o=(334.3837214+40.66246584*zsy+.111404016*zday+.004641834*zhfrac)*rad
+
+
+
+      IF(ln_astro_verbose .AND. lwp) THEN
+          WRITE(numout,*)
+          WRITE(numout,*) 'tide_mod_astro_ang_orig,yr_wrk,mn_wrk,dy_wrk,nsec_day,=',yr_wrk,mn_wrk,dy_wrk,nsec_day
+          WRITE(numout,*) 'tide_mod_astro_ang_orig,sh_N_o,sh_T_o,sh_h_o,sh_s_o,sh_p1_o,sh_p_o,', sh_N_o,sh_T_o,sh_h_o,sh_s_o,sh_p1_o,sh_p_o
+          WRITE(numout,*) 'tide_mod_astro_ang_orig,zqy ,zdj,zsy,zday,zhfrac,rad,', zqy ,zdj,zsy,zday,zhfrac,rad
+
+          WRITE(numout,*) '~~~~~~~~~~~~~~ '
+      ENDIF
+
+
+
+      sh_N_o = MOD( sh_N_o ,2*rpi )
+      sh_s_o = MOD( sh_s_o ,2*rpi )
+      sh_h_o = MOD( sh_h_o, 2*rpi )
+      sh_p_o = MOD( sh_p_o, 2*rpi )
+      sh_p1_o= MOD( sh_p1_o,2*rpi )
+
+
+!      cosI = 0.913694997 -0.035692561 *cos(sh_N_o)
+!
+!
+!
+!!      REAL(wp) ::   cosI, p, q, t2, t4, sin2I, s2, tgI2, P1, sh_tgn2, at1, at2
+!!      REAL(wp) ::   zqy , zsy, zday, zdj, zhfrac
+!
+!
+!      sh_I_o = ACOS( cosI )
+!
+!      sin2I   = sin(sh_I_o)
+!      sh_tgn2 = tan(sh_N_o/2.0)
+!
+!      at1=atan(1.01883*sh_tgn2)
+!      at2=atan(0.64412*sh_tgn2)
+!
+!      sh_xi_o=-at1-at2+sh_N
+!
+!      IF( sh_N_o > rpi )   sh_xi_o=sh_xi_o-2.0*rpi
+!
+!      sh_nu_o = at1 - at2
+!
+!      !----------------------------------------------------------------------
+!      ! For constituents l2 k1 k2
+!      !----------------------------------------------------------------------
+!
+!      tgI2 = tan(sh_I_o/2.0)
+!      P1   = sh_p_o-sh_xi_o
+!
+!      t2 = tgI2*tgI2
+!      t4 = t2*t2
+!      sh_x1ra_o = sqrt( 1.0-12.0*t2*cos(2.0*P1)+36.0*t4 )
+!
+!      p = sin(2.0*P1)
+!      q = 1.0/(6.0*t2)-cos(2.0*P1)
+!      sh_R = atan(p/q)
+!
+!      p = sin(2.0*sh_I)*sin(sh_nu)
+!      q = sin(2.0*sh_I)*cos(sh_nu)+0.3347
+!      sh_nuprim_o = atan(p/q)
+!
+!      s2 = sin(sh_I_o)*sin(sh_I_o)
+!      p  = s2*sin(2.0*sh_nu_o)
+!      q  = s2*cos(2.0*sh_nu_o)+0.0727
+!      sh_nusec_o = 0.5*atan(p/q)
+
+
+
+      !
+   END SUBROUTINE astronomic_angle_origin
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
    SUBROUTINE tide_pulse( pomega, ktide ,kc )
       !!----------------------------------------------------------------------
       !!                     ***  ROUTINE tide_pulse  ***
@@ -762,203 +988,201 @@ CONTAINS
         ENDDO
 
 
-        !offset(1) = 0.10789890_wp
-        !offset(2) = 1.10897897_wp
-        !offset(3) = 2.11005903_wp
-        !offset(4) = 0.00000000_wp
-        !offset(5) = 3.47632710_wp
-        !offset(6) = 0.16751976_wp
-        !offset(7) = -0.05503165_wp
-        !offset(8) = 0.94604842_wp
-        !offset(9) = 6.10534877_wp
-        !offset(10) = 0.21579780_wp
-        !offset(11) = 0.00000000_wp
-        !offset(12) = 0.00000000_wp
-        !offset(13) = 0.00000000_wp
-        !offset(14) = 0.00000000_wp
-        !offset(15) = 3.14159265_wp
-        !offset(16) = 0.21833313_wp
-        !offset(17) = 5.50043837_wp
-        !offset(18) = 2.24841149_wp
-        !offset(19) = 0.01800173_wp
+!        !offset(1) = 0.10789890_wp
+!        !offset(2) = 1.10897897_wp
+!        !offset(3) = 2.11005903_wp
+!        !offset(4) = 0.00000000_wp
+!        !offset(5) = 3.47632710_wp
+!        !offset(6) = 0.16751976_wp
+!        !offset(7) = -0.05503165_wp
+!        !offset(8) = 0.94604842_wp
+!        !offset(9) = 6.10534877_wp
+!        !offset(10) = 0.21579780_wp
+!        !offset(11) = 0.00000000_wp
+!        !offset(12) = 0.00000000_wp
+!        !offset(13) = 0.00000000_wp
+!        !offset(14) = 0.00000000_wp
+!        !offset(15) = 3.14159265_wp
+!        !offset(16) = 0.21833313_wp
+!        !offset(17) = 5.50043837_wp
+!        !offset(18) = 2.24841149_wp
+!        !offset(19) = 0.01800173_wp
 
-        !v0linearintercept(1) = 0.11044027_wp
-        !v0linearintercept(2) = 1.11152799_wp
-        !v0linearintercept(3) = 2.11261570_wp
-        !v0linearintercept(4) = 0.00000000_wp
-        !v0linearintercept(5) = 3.49727335_wp
-        !v0linearintercept(6) = 0.17784035_wp
-        !v0linearintercept(7) = 6.21578523_wp
-        !v0linearintercept(8) = 0.93368764_wp
-        !v0linearintercept(9) = 6.10534496_wp
-        !v0linearintercept(10) = 0.22088055_wp
-        !v0linearintercept(11) = 0.00000000_wp
-        !v0linearintercept(12) = 0.00000000_wp
-        !v0linearintercept(13) = 0.00000000_wp
-        !v0linearintercept(14) = 0.00000000_wp
-        !v0linearintercept(15) = 3.14159265_wp
+!        !v0linearintercept(1) = 0.11044027_wp
+!        !v0linearintercept(2) = 1.11152799_wp
+!        !v0linearintercept(3) = 2.11261570_wp
+!        !v0linearintercept(4) = 0.00000000_wp
+!        !v0linearintercept(5) = 3.49727335_wp
+!        !v0linearintercept(6) = 0.17784035_wp
+!        !v0linearintercept(7) = 6.21578523_wp
+!        !v0linearintercept(8) = 0.93368764_wp
+!        !v0linearintercept(9) = 6.10534496_wp
+!        !v0linearintercept(10) = 0.22088055_wp
+!        !v0linearintercept(11) = 0.00000000_wp
+!        !v0linearintercept(12) = 0.00000000_wp
+!        !v0linearintercept(13) = 0.00000000_wp
+!        !v0linearintercept(14) = 0.00000000_wp
+!        !v0linearintercept(15) = 3.14159265_wp
 
-        !v0linearintercept(1) = v0linearintercept(1) - 0.000000_wp
-        !v0linearintercept(2) = v0linearintercept(2) - 0.000000_wp
-        !v0linearintercept(3) = v0linearintercept(3) - 0_wp
-        !v0linearintercept(4) = v0linearintercept(4) - 0.165795_wp
-        !v0linearintercept(5) = v0linearintercept(5) + 2.821252_wp
-        !v0linearintercept(6) = v0linearintercept(6) + 0.479504_wp
-        !v0linearintercept(7) = v0linearintercept(7) - 2.175621_wp
-        !v0linearintercept(8) = v0linearintercept(8) + 1.900267_wp
-        !v0linearintercept(9) = v0linearintercept(9) + 0.107633_wp
-        !v0linearintercept(10) = v0linearintercept(10) - 0.000000_wp
-        !v0linearintercept(11) = v0linearintercept(11) - 0.000000_wp
-        !v0linearintercept(12) = v0linearintercept(12) - 0.225730_wp
-        !v0linearintercept(13) = v0linearintercept(13) - 0.238641_wp
-        !v0linearintercept(14) = v0linearintercept(14) - 3.005851_wp
-        !v0linearintercept(15) = v0linearintercept(15) - 0.000000_wp
+!        !v0linearintercept(1) = v0linearintercept(1) - 0.000000_wp
+!        !v0linearintercept(2) = v0linearintercept(2) - 0.000000_wp
+!        !v0linearintercept(3) = v0linearintercept(3) - 0_wp
+!        !v0linearintercept(4) = v0linearintercept(4) - 0.165795_wp
+!        !v0linearintercept(5) = v0linearintercept(5) + 2.821252_wp
+!        !v0linearintercept(6) = v0linearintercept(6) + 0.479504_wp
+!        !v0linearintercept(7) = v0linearintercept(7) - 2.175621_wp
+!        !v0linearintercept(8) = v0linearintercept(8) + 1.900267_wp
+!        !v0linearintercept(9) = v0linearintercept(9) + 0.107633_wp
+!        !v0linearintercept(10) = v0linearintercept(10) - 0.000000_wp
+!        !v0linearintercept(11) = v0linearintercept(11) - 0.000000_wp
+!        !v0linearintercept(12) = v0linearintercept(12) - 0.225730_wp
+!        !v0linearintercept(13) = v0linearintercept(13) - 0.238641_wp
+!        !v0linearintercept(14) = v0linearintercept(14) - 3.005851_wp
+!        !v0linearintercept(15) = v0linearintercept(15) - 0.000000_wp
 
-        !v0linearintercept(1) =   0.11044026999999999_wp
-        !v0linearintercept(2) =   1.11152798999999990_wp
-        !v0linearintercept(3) =   2.11261570000000010_wp
-        !v0linearintercept(4) =  -0.16579500000000000_wp
-        !v0linearintercept(5) =   6.31852534999999980_wp
-        !v0linearintercept(6) =   0.65734435000000002_wp
-        !v0linearintercept(7) =   4.04016423000000020_wp
-        !v0linearintercept(8) =   2.83395464000000000_wp
-        !v0linearintercept(9) =   6.21297795999999990_wp
-        !v0linearintercept(10) =  0.22088055000000001_wp
-        !v0linearintercept(11) =  0.00000000000000000_wp
-        !v0linearintercept(12) = -0.22572999999999999_wp
-        !v0linearintercept(13) = -0.23864099999999999_wp
-        !v0linearintercept(14) = -3.00585099999999980_wp
-        !v0linearintercept(15) =  3.14159265000000020_wp
+!        !v0linearintercept(1) =   0.11044026999999999_wp
+!        !v0linearintercept(2) =   1.11152798999999990_wp
+!        !v0linearintercept(3) =   2.11261570000000010_wp
+!        !v0linearintercept(4) =  -0.16579500000000000_wp
+!        !v0linearintercept(5) =   6.31852534999999980_wp
+!        !v0linearintercept(6) =   0.65734435000000002_wp
+!        !v0linearintercept(7) =   4.04016423000000020_wp
+!        !v0linearintercept(8) =   2.83395464000000000_wp
+!        !v0linearintercept(9) =   6.21297795999999990_wp
+!        !v0linearintercept(10) =  0.22088055000000001_wp
+!        !v0linearintercept(11) =  0.00000000000000000_wp
+!        !v0linearintercept(12) = -0.22572999999999999_wp
+!        !v0linearintercept(13) = -0.23864099999999999_wp
+!        !v0linearintercept(14) = -3.00585099999999980_wp
+!        !v0linearintercept(15) =  3.14159265000000020_wp
 
-        v0linearintercept( 1) =   0.2208805500_wp   -  (rpi* 68.0_wp/180.0_wp) !   M2  1
-        v0linearintercept( 2) =   3.1186126191_wp  !   N2  2
-        v0linearintercept( 3) =   0.9305155436_wp  !  2N2  3
-        v0linearintercept( 4) =   0.0194858941_wp  !   S2  4
-        v0linearintercept( 5) =  -2.5213114949_wp  !   K2  5
-        v0linearintercept( 6) =   6.5970532125_wp  !   K1  6
-        v0linearintercept( 7) =   1.1115279900_wp  !   O1  7
-        v0linearintercept( 8) =   0.1104402700_wp  !   Q1  8
-        !     v0linearintercept( 9) =   4.2269096542_wp  !   P1  9
-        !v0linearintercept( 9) =  -2.0351042402_wp  !   P1  9  compress3
-        !v0linearintercept( 9) =  -2.0351042402_wp  - 2.6179938779914944 !   P1  9  compress4
+!        v0linearintercept( 1) =   0.2208805500_wp   -  (rpi* 68.0_wp/180.0_wp) !   M2  1
+!        v0linearintercept( 2) =   3.1186126191_wp  !   N2  2
+!        v0linearintercept( 3) =   0.9305155436_wp  !  2N2  3
+!        v0linearintercept( 4) =   0.0194858941_wp  !   S2  4
+!        v0linearintercept( 5) =  -2.5213114949_wp  !   K2  5
+!        v0linearintercept( 6) =   6.5970532125_wp  !   K1  6
+!        v0linearintercept( 7) =   1.1115279900_wp  !   O1  7
+!        v0linearintercept( 8) =   0.1104402700_wp  !   Q1  8
+!        !     v0linearintercept( 9) =   4.2269096542_wp  !   P1  9
+!        !v0linearintercept( 9) =  -2.0351042402_wp  !   P1  9  compress3
+!        !v0linearintercept( 9) =  -2.0351042402_wp  - 2.6179938779914944 !   P1  9  compress4
 
-        v0linearintercept( 9) =   rpi* 345.0_wp/180.0_wp -  (rpi* 140.0_wp/180.0_wp) !   P1  9  compress4
+!        v0linearintercept( 9) =   rpi* 345.0_wp/180.0_wp -  (rpi* 140.0_wp/180.0_wp) !   P1  9  compress4
 
-        v0linearintercept(10) =   3.1415926500_wp  !   M4 10
-        v0linearintercept(11) =   0.0000000000_wp  !   Mf 11
-        v0linearintercept(12) =   0.0000000000_wp  !   Mm 12
-        v0linearintercept(13) =   0.0000000000_wp  ! Msqm 13
-        v0linearintercept(14) =   0.0000000000_wp  !  Mtm 14
-        v0linearintercept(15) =  -0.0230244122_wp  !   S1 15
-        v0linearintercept(16) =   4.2565208698_wp  !  MU2 16
-        v0linearintercept(17) =   6.5001767059_wp  !  NU2 17
-        v0linearintercept(18) =   0.0000000000_wp    -  (rpi* 113.0_wp/180.0_wp) !   L2 18
-        v0linearintercept(19) =   0.0092971808_wp  !   T2 19  + rpi/2.
+!        v0linearintercept(10) =   3.1415926500_wp  !   M4 10
+!        v0linearintercept(11) =   0.0000000000_wp  !   Mf 11
+!        v0linearintercept(12) =   0.0000000000_wp  !   Mm 12
+!        v0linearintercept(13) =   0.0000000000_wp  ! Msqm 13
+!        v0linearintercept(14) =   0.0000000000_wp  !  Mtm 14
+!        v0linearintercept(15) =  -0.0230244122_wp  !   S1 15
+!        v0linearintercept(16) =   4.2565208698_wp  !  MU2 16
+!        v0linearintercept(17) =   6.5001767059_wp  !  NU2 17
+!        v0linearintercept(18) =   0.0000000000_wp    -  (rpi* 113.0_wp/180.0_wp) !   L2 18
+!        v0linearintercept(19) =   0.0092971808_wp  !   T2 19  + rpi/2.
 
-        !v0linearintercept(1) = v0linearintercept(1) - 0.034975_wp    ! M2
-        !v0linearintercept(2) = v0linearintercept(2) - 0.030244_wp    ! N2
-        !v0linearintercept(3) = v0linearintercept(3) - 0.036046_wp    ! 2N2
-        !v0linearintercept(4) = v0linearintercept(4) + 0.002092_wp    ! S2
-        !v0linearintercept(5) = v0linearintercept(5) - 0.273826_wp    ! K2
-        !v0linearintercept(6) = v0linearintercept(6) - 0.144677_wp    ! K1
-        !v0linearintercept(7) = v0linearintercept(7) + 0.031938_wp    ! O1
-        !v0linearintercept(8) = v0linearintercept(8) - 0.812030_wp    ! Q1
-        !v0linearintercept(9) = v0linearintercept(9) + 2.109118_wp    ! P1
-        !v0linearintercept(10) = v0linearintercept(10) + 0.070021_wp    ! M4
-        !v0linearintercept(11) = v0linearintercept(11) - 0.000000_wp    ! Mf
-        !v0linearintercept(12) = v0linearintercept(12) - 0.000000_wp    ! Mm
-        !v0linearintercept(13) = v0linearintercept(13) - 0.000000_wp    ! Msqm
-        !v0linearintercept(14) = v0linearintercept(14) - 0.000000_wp    ! Mtm
-        !v0linearintercept(15) = v0linearintercept(15) - 0.035676_wp    ! S1
-        !v0linearintercept(16) = v0linearintercept(16) + 0.007598_wp    ! MU2
-        !v0linearintercept(17) = v0linearintercept(17) - 0.043060_wp    ! NU2
-        !v0linearintercept(18) = v0linearintercept(18) + 0.023561_wp    ! L2
-        !v0linearintercept(19) = v0linearintercept(19) + 0.025624_wp    ! T2
+!        !v0linearintercept(1) = v0linearintercept(1) - 0.034975_wp    ! M2
+!        !v0linearintercept(2) = v0linearintercept(2) - 0.030244_wp    ! N2
+!        !v0linearintercept(3) = v0linearintercept(3) - 0.036046_wp    ! 2N2
+!        !v0linearintercept(4) = v0linearintercept(4) + 0.002092_wp    ! S2
+!        !v0linearintercept(5) = v0linearintercept(5) - 0.273826_wp    ! K2
+!        !v0linearintercept(6) = v0linearintercept(6) - 0.144677_wp    ! K1
+!        !v0linearintercept(7) = v0linearintercept(7) + 0.031938_wp    ! O1
+!        !v0linearintercept(8) = v0linearintercept(8) - 0.812030_wp    ! Q1
+!        !v0linearintercept(9) = v0linearintercept(9) + 2.109118_wp    ! P1
+!        !v0linearintercept(10) = v0linearintercept(10) + 0.070021_wp    ! M4
+!        !v0linearintercept(11) = v0linearintercept(11) - 0.000000_wp    ! Mf
+!        !v0linearintercept(12) = v0linearintercept(12) - 0.000000_wp    ! Mm
+!        !v0linearintercept(13) = v0linearintercept(13) - 0.000000_wp    ! Msqm
+!        !v0linearintercept(14) = v0linearintercept(14) - 0.000000_wp    ! Mtm
+!        !v0linearintercept(15) = v0linearintercept(15) - 0.035676_wp    ! S1
+!        !v0linearintercept(16) = v0linearintercept(16) + 0.007598_wp    ! MU2
+!        !v0linearintercept(17) = v0linearintercept(17) - 0.043060_wp    ! NU2
+!        !v0linearintercept(18) = v0linearintercept(18) + 0.023561_wp    ! L2
+!        !v0linearintercept(19) = v0linearintercept(19) + 0.025624_wp    ! T2
 
-        v0linearintercept(1) = v0linearintercept(1) - (rpi*2.003909_wp/180.0_wp)    ! M2
-        v0linearintercept(2) = v0linearintercept(2) - (rpi*1.732874_wp/180.0_wp)    ! N2
-        v0linearintercept(3) = v0linearintercept(3) - (rpi*2.065265_wp/180.0_wp)    ! 2N2
-        v0linearintercept(4) = v0linearintercept(4) + (rpi*0.119842_wp/180.0_wp)    ! S2
-        v0linearintercept(5) = v0linearintercept(5) - (rpi*15.689068_wp/180.0_wp)    ! K2
-        v0linearintercept(6) = v0linearintercept(6) - (rpi*8.289390_wp/180.0_wp)    ! K1
-        v0linearintercept(7) = v0linearintercept(7) + (rpi*1.829931_wp/180.0_wp)    ! O1
-        v0linearintercept(8) = v0linearintercept(8) - (rpi*46.525902_wp/180.0_wp)    ! Q1
-        v0linearintercept(9) = v0linearintercept(9) + (rpi*120.843575_wp/180.0_wp)    ! P1
-        v0linearintercept(10) = v0linearintercept(10) + (rpi*4.011896_wp/180.0_wp)    ! M4
-        v0linearintercept(11) = v0linearintercept(11) - (rpi*0.000000_wp/180.0_wp)    ! Mf
-        v0linearintercept(12) = v0linearintercept(12) - (rpi*0.000000_wp/180.0_wp)    ! Mm
-        v0linearintercept(13) = v0linearintercept(13) - (rpi*0.000000_wp/180.0_wp)    ! Msqm
-        v0linearintercept(14) = v0linearintercept(14) - (rpi*0.000000_wp/180.0_wp)    ! Mtm
-        v0linearintercept(15) = v0linearintercept(15) - (rpi*2.044069_wp/180.0_wp)    ! S1
-        v0linearintercept(16) = v0linearintercept(16) + (rpi*0.435315_wp/180.0_wp)    ! MU2
-        v0linearintercept(17) = v0linearintercept(17) - (rpi*2.467160_wp/180.0_wp)    ! NU2
-        v0linearintercept(18) = v0linearintercept(18) + (rpi*1.349939_wp/180.0_wp)    ! L2
-        v0linearintercept(19) = v0linearintercept(19) + (rpi*1.468170_wp/180.0_wp)    ! T2
-
-
-        ! wave data.
-
-        !Wave( 1) = tide(  'M2'     , 0.242297 ,    2   ,  2 , -2 ,  2 ,  0 ,  0  ,    0  ,  2   , -2   ,  0   ,  0   , 0 ,    78   )
-        !Wave( 2) = tide(  'N2'     , 0.046313 ,    2   ,  2 , -3 ,  2 ,  1 ,  0  ,    0  ,  2   , -2   ,  0   ,  0   , 0 ,    78   )
-        !Wave( 3) = tide( '2N2'     , 0.006184 ,    2   ,  2 , -4 ,  2 ,  2 ,  0  ,    0  ,  2   , -2   ,  0   ,  0   , 0 ,    78   )
-        !Wave( 4) = tide(  'S2'     , 0.113572 ,    2   ,  2 ,  0 ,  0 ,  0 ,  0  ,    0  ,  0   ,  0   ,  0   ,  0   , 0 ,     0   )
-        !Wave( 5) = tide(  'K2'     , 0.030875 ,    2   ,  2 ,  0 ,  2 ,  0 ,  0  ,    0  ,  0   ,  0   ,  0   , -2   , 0 ,   235   )
-        !!              !           !          !        !    !    !    !    !     !       !      !      !      !      !   !         !
-        !Wave( 6) = tide(  'K1'     , 0.142408 ,    1   ,  1 ,  0 ,  1 ,  0 ,  0  ,  -90  ,  0   ,  0   , -1   ,  0   , 0 ,   227   )
-        !Wave( 7) = tide(  'O1'     , 0.101266 ,    1   ,  1 , -2 ,  1 ,  0 ,  0  ,  +90  ,  2   , -1   ,  0   ,  0   , 0 ,    75   )
-        !Wave( 8) = tide(  'Q1'     , 0.019387 ,    1   ,  1 , -3 ,  1 ,  1 ,  0  ,  +90  ,  2   , -1   ,  0   ,  0   , 0 ,    75   )
-        !Wave( 9) = tide(  'P1'     , 0.047129 ,    1   ,  1 ,  0 , -1 ,  0 ,  0  ,  +90  ,  0   ,  0   ,  0   ,  0   , 0 ,    0    )
-        !!              !           !          !        !    !    !    !    !     !       !      !      !      !      !   !         !
-        !Wave(10) = tide(  'M4'     , 0.000000 ,    4   ,  4 , -4 ,  4 ,  0 ,  0  ,    0  ,  4   , -4   ,  0   ,  0   , 0 ,    1    )
-        !!              !           !          !        !    !    !    !    !     !       !      !      !      !      !   !         !
-        !Wave(11) = tide(  'Mf'     , 0.042017 ,    0   ,  0 ,  2 ,  0 ,  0 ,  0  ,    0  , -2   ,  0   ,  0   ,  0   , 0 ,   74    )
-        !Wave(12) = tide(  'Mm'     , 0.022191 ,    0   ,  0 ,  1 ,  0 , -1 ,  0  ,    0  ,  0   ,  0   ,  0   ,  0   , 0 ,   73    )
-        !Wave(13) = tide(  'Msqm'   , 0.000667 ,    0   ,  0 ,  4 , -2 ,  0 ,  0  ,    0  , -2   ,  0   ,  0   ,  0   , 0 ,   74    )
-        !Wave(14) = tide(  'Mtm'    , 0.008049 ,    0   ,  0 ,  3 ,  0 , -1 ,  0  ,    0  , -2   ,  0   ,  0   ,  0   , 0 ,   74    )
-        !!              !           !          !        !    !    !    !    !     !       !      !      !      !      !   !         !
-        !Wave(15) = tide(  'S1'     , 0.000000 ,    1   ,  1 ,  0 ,  0 ,  0 ,  0  ,    0  ,  0   ,  0   ,  0   ,  0   , 0 ,    0    )   
-        !Wave(16) = tide(  'MU2'    , 0.005841 ,    2   ,  2 , -4 ,  4 ,  0 ,  0  ,    0  ,  2   , -2   ,  0   ,  0   , 0 ,   78    )
-        !Wave(17) = tide(  'NU2'    , 0.009094 ,    2   ,  2 , -3 ,  4 , -1 ,  0  ,    0  ,  2   , -2   ,  0   ,  0   , 0 ,   78    ) 
-        !Wave(18) = tide(  'L2'     , 0.006694 ,    2   ,  2 , -1 ,  2 , -1 ,  0  , +180  ,  2   , -2   ,  0   ,  0   , 0 ,  215    )
-        !Wave(19) = tide(  'T2'     , 0.006614 ,    2   ,  2 ,  0 , -1 ,  0 ,  1  ,    0  ,  0   ,  0   ,  0   ,  0   , 0 ,    0    )
-
-        !name list
-        !  clname(1)='Q1'
-        !  clname(2)='O1'
-        !  clname(3)='P1'
-        !  clname(4)='S1'
-        !  clname(5)='K1'
-        !  clname(6)='2N2'
-        !  clname(7)='MU2'
-        !  clname(8)='N2'
-        !  clname(9)='NU2'
-        !  clname(10)='M2'
-        !  clname(11)='L2'
-        !  clname(12)='T2'
-        !  clname(13)='S2'
-        !  clname(14)='K2'
-        !  clname(15)='M4'
-
-        ! ktide 8,7,9,15
-
-        !ktide = 
-        !8
-        !7
-        !9
-        !15
-        !6
-        !3
-        !16
-        !2
-        !17
-        !1
-        !18
-        !19
-        !4
-        !5
-        !10
+!        v0linearintercept(1) = v0linearintercept(1) - (rpi*2.003909_wp/180.0_wp)    ! M2
+!        v0linearintercept(2) = v0linearintercept(2) - (rpi*1.732874_wp/180.0_wp)    ! N2
+!        v0linearintercept(3) = v0linearintercept(3) - (rpi*2.065265_wp/180.0_wp)    ! 2N2
+!        v0linearintercept(4) = v0linearintercept(4) + (rpi*0.119842_wp/180.0_wp)    ! S2
+!        v0linearintercept(5) = v0linearintercept(5) - (rpi*15.689068_wp/180.0_wp)    ! K2
+!        v0linearintercept(6) = v0linearintercept(6) - (rpi*8.289390_wp/180.0_wp)    ! K1
+!        v0linearintercept(7) = v0linearintercept(7) + (rpi*1.829931_wp/180.0_wp)    ! O1
+!        v0linearintercept(8) = v0linearintercept(8) - (rpi*46.525902_wp/180.0_wp)    ! Q1
+!        v0linearintercept(9) = v0linearintercept(9) + (rpi*120.843575_wp/180.0_wp)    ! P1
+!        v0linearintercept(10) = v0linearintercept(10) + (rpi*4.011896_wp/180.0_wp)    ! M4
+!        v0linearintercept(11) = v0linearintercept(11) - (rpi*0.000000_wp/180.0_wp)    ! Mf
+!        v0linearintercept(12) = v0linearintercept(12) - (rpi*0.000000_wp/180.0_wp)    ! Mm
+!        v0linearintercept(13) = v0linearintercept(13) - (rpi*0.000000_wp/180.0_wp)    ! Msqm
+!        v0linearintercept(14) = v0linearintercept(14) - (rpi*0.000000_wp/180.0_wp)    ! Mtm
+!        v0linearintercept(15) = v0linearintercept(15) - (rpi*2.044069_wp/180.0_wp)    ! S1
+!        v0linearintercept(16) = v0linearintercept(16) + (rpi*0.435315_wp/180.0_wp)    ! MU2
+!        v0linearintercept(17) = v0linearintercept(17) - (rpi*2.467160_wp/180.0_wp)    ! NU2
+!        v0linearintercept(18) = v0linearintercept(18) + (rpi*1.349939_wp/180.0_wp)    ! L2
+!        v0linearintercept(19) = v0linearintercept(19) + (rpi*1.468170_wp/180.0_wp)    ! T2
 
 
+!        ! wave data.
+
+!        !Wave( 1) = tide(  'M2'     , 0.242297 ,    2   ,  2 , -2 ,  2 ,  0 ,  0  ,    0  ,  2   , -2   ,  0   ,  0   , 0 ,    78   )
+!        !Wave( 2) = tide(  'N2'     , 0.046313 ,    2   ,  2 , -3 ,  2 ,  1 ,  0  ,    0  ,  2   , -2   ,  0   ,  0   , 0 ,    78   )
+!        !Wave( 3) = tide( '2N2'     , 0.006184 ,    2   ,  2 , -4 ,  2 ,  2 ,  0  ,    0  ,  2   , -2   ,  0   ,  0   , 0 ,    78   )
+!        !Wave( 4) = tide(  'S2'     , 0.113572 ,    2   ,  2 ,  0 ,  0 ,  0 ,  0  ,    0  ,  0   ,  0   ,  0   ,  0   , 0 ,     0   )
+!        !Wave( 5) = tide(  'K2'     , 0.030875 ,    2   ,  2 ,  0 ,  2 ,  0 ,  0  ,    0  ,  0   ,  0   ,  0   , -2   , 0 ,   235   )
+!        !!              !           !          !        !    !    !    !    !     !       !      !      !      !      !   !         !
+!        !Wave( 6) = tide(  'K1'     , 0.142408 ,    1   ,  1 ,  0 ,  1 ,  0 ,  0  ,  -90  ,  0   ,  0   , -1   ,  0   , 0 ,   227   )
+!        !Wave( 7) = tide(  'O1'     , 0.101266 ,    1   ,  1 , -2 ,  1 ,  0 ,  0  ,  +90  ,  2   , -1   ,  0   ,  0   , 0 ,    75   )
+!        !Wave( 8) = tide(  'Q1'     , 0.019387 ,    1   ,  1 , -3 ,  1 ,  1 ,  0  ,  +90  ,  2   , -1   ,  0   ,  0   , 0 ,    75   )
+!        !Wave( 9) = tide(  'P1'     , 0.047129 ,    1   ,  1 ,  0 , -1 ,  0 ,  0  ,  +90  ,  0   ,  0   ,  0   ,  0   , 0 ,    0    )
+!        !!              !           !          !        !    !    !    !    !     !       !      !      !      !      !   !         !
+!        !Wave(10) = tide(  'M4'     , 0.000000 ,    4   ,  4 , -4 ,  4 ,  0 ,  0  ,    0  ,  4   , -4   ,  0   ,  0   , 0 ,    1    )
+!        !!              !           !          !        !    !    !    !    !     !       !      !      !      !      !   !         !
+!        !Wave(11) = tide(  'Mf'     , 0.042017 ,    0   ,  0 ,  2 ,  0 ,  0 ,  0  ,    0  , -2   ,  0   ,  0   ,  0   , 0 ,   74    )
+!        !Wave(12) = tide(  'Mm'     , 0.022191 ,    0   ,  0 ,  1 ,  0 , -1 ,  0  ,    0  ,  0   ,  0   ,  0   ,  0   , 0 ,   73    )
+!        !Wave(13) = tide(  'Msqm'   , 0.000667 ,    0   ,  0 ,  4 , -2 ,  0 ,  0  ,    0  , -2   ,  0   ,  0   ,  0   , 0 ,   74    )
+!        !Wave(14) = tide(  'Mtm'    , 0.008049 ,    0   ,  0 ,  3 ,  0 , -1 ,  0  ,    0  , -2   ,  0   ,  0   ,  0   , 0 ,   74    )
+!        !!              !           !          !        !    !    !    !    !     !       !      !      !      !      !   !         !
+!        !Wave(15) = tide(  'S1'     , 0.000000 ,    1   ,  1 ,  0 ,  0 ,  0 ,  0  ,    0  ,  0   ,  0   ,  0   ,  0   , 0 ,    0    )   
+!        !Wave(16) = tide(  'MU2'    , 0.005841 ,    2   ,  2 , -4 ,  4 ,  0 ,  0  ,    0  ,  2   , -2   ,  0   ,  0   , 0 ,   78    )
+!        !Wave(17) = tide(  'NU2'    , 0.009094 ,    2   ,  2 , -3 ,  4 , -1 ,  0  ,    0  ,  2   , -2   ,  0   ,  0   , 0 ,   78    ) 
+!        !Wave(18) = tide(  'L2'     , 0.006694 ,    2   ,  2 , -1 ,  2 , -1 ,  0  , +180  ,  2   , -2   ,  0   ,  0   , 0 ,  215    )
+!        !Wave(19) = tide(  'T2'     , 0.006614 ,    2   ,  2 ,  0 , -1 ,  0 ,  1  ,    0  ,  0   ,  0   ,  0   ,  0   , 0 ,    0    )
+
+!        !name list
+!        !  clname(1)='Q1'
+!        !  clname(2)='O1'
+!        !  clname(3)='P1'
+!        !  clname(4)='S1'
+!        !  clname(5)='K1'
+!        !  clname(6)='2N2'
+!        !  clname(7)='MU2'
+!        !  clname(8)='N2'
+!        !  clname(9)='NU2'
+!        !  clname(10)='M2'
+!        !  clname(11)='L2'
+!        !  clname(12)='T2'
+!        !  clname(13)='S2'
+!        !  clname(14)='K2'
+!        !  clname(15)='M4'
+
+!        ! ktide 8,7,9,15
+
+!        !ktide = 
+!        !8
+!        !7
+!        !9
+!        !15
+!        !6
+!        !3
+!        !16
+!        !2
+!        !17
+!        !1
+!        !18
+!        !19
+!        !4
+!        !5
+!        !10
 
 
 
@@ -969,59 +1193,61 @@ CONTAINS
 
 
 
-        !NEMO4
-
-!        clname(1)='Q1'
-!        clname(2)='O1'
-!        clname(3)='P1'
-!        clname(4)='S1'
-!        clname(5)='K1'
-!        clname(6)='2N2'
-!        clname(7)='MU2'
-!        clname(8)='N2'
-!        clname(9)='NU2'
-!        clname(10)='M2'
-!        clname(11)='L2'
-!        clname(12)='T2'
-!        clname(13)='S2'
-!        clname(14)='K2'
-!        clname(15)='M4'
-!        ktide = [10,9,11,12,8,23,21,15,22,14,18,19,16,17,28]
 
 
-        v0linearintercept( 1) =   0.1104402700_wp  !   Q1  8
-        v0linearintercept( 2) =   1.1115279900_wp  !   O1  7
-        v0linearintercept( 3) =   rpi* 345.0_wp/180.0_wp -  (rpi* 140.0_wp/180.0_wp) !   P1  9  compress4
-        v0linearintercept( 4) =  -0.0230244122_wp  !   S1 15
-        v0linearintercept( 5) =   6.5970532125_wp  !   K1  6
-        v0linearintercept( 6) =   0.9305155436_wp  !  2N2  3
-        v0linearintercept( 7) =   4.2565208698_wp  !  MU2 16
-        v0linearintercept( 8) =   3.1186126191_wp  !   N2  2
-        v0linearintercept( 9) =   6.5001767059_wp  !  NU2 17
-        v0linearintercept(10) =   0.2208805500_wp   -  (rpi* 68.0_wp/180.0_wp) !   M2  1
-        v0linearintercept(11) =   0.0000000000_wp    -  (rpi* 113.0_wp/180.0_wp) !   L2 18
-        v0linearintercept(12) =   0.0092971808_wp  !   T2 19  + rpi/2.
-        v0linearintercept(13) =   0.0194858941_wp  !   S2  4
-        v0linearintercept(14) =  -2.5213114949_wp  !   K2  5
-        v0linearintercept(15) =   3.1415926500_wp  !   M4 10
+!        !NEMO4
+
+!!        clname(1)='Q1'
+!!        clname(2)='O1'
+!!        clname(3)='P1'
+!!        clname(4)='S1'
+!!        clname(5)='K1'
+!!        clname(6)='2N2'
+!!        clname(7)='MU2'
+!!        clname(8)='N2'
+!!        clname(9)='NU2'
+!!        clname(10)='M2'
+!!        clname(11)='L2'
+!!        clname(12)='T2'
+!!        clname(13)='S2'
+!!        clname(14)='K2'
+!!        clname(15)='M4'
+!!        ktide = [10,9,11,12,8,23,21,15,22,14,18,19,16,17,28]
+
+
+!        v0linearintercept( 1) =   0.1104402700_wp  !   Q1  8
+!        v0linearintercept( 2) =   1.1115279900_wp  !   O1  7
+!        v0linearintercept( 3) =   rpi* 345.0_wp/180.0_wp -  (rpi* 140.0_wp/180.0_wp) !   P1  9  compress4
+!        v0linearintercept( 4) =  -0.0230244122_wp  !   S1 15
+!        v0linearintercept( 5) =   6.5970532125_wp  !   K1  6
+!        v0linearintercept( 6) =   0.9305155436_wp  !  2N2  3
+!        v0linearintercept( 7) =   4.2565208698_wp  !  MU2 16
+!        v0linearintercept( 8) =   3.1186126191_wp  !   N2  2
+!        v0linearintercept( 9) =   6.5001767059_wp  !  NU2 17
+!        v0linearintercept(10) =   0.2208805500_wp   -  (rpi* 68.0_wp/180.0_wp) !   M2  1
+!        v0linearintercept(11) =   0.0000000000_wp    -  (rpi* 113.0_wp/180.0_wp) !   L2 18
+!        v0linearintercept(12) =   0.0092971808_wp  !   T2 19  + rpi/2.
+!        v0linearintercept(13) =   0.0194858941_wp  !   S2  4
+!        v0linearintercept(14) =  -2.5213114949_wp  !   K2  5
+!        v0linearintercept(15) =   3.1415926500_wp  !   M4 10
 
 
 
-        v0linearintercept( 1) = v0linearintercept( 1) - (rpi*46.525902_wp/180.0_wp)   ! Q1
-        v0linearintercept( 2) = v0linearintercept( 2) + (rpi*1.829931_wp/180.0_wp)    ! O1
-        v0linearintercept( 3) = v0linearintercept( 3) + (rpi*120.843575_wp/180.0_wp)  ! P1
-        v0linearintercept( 4) = v0linearintercept( 4) - (rpi*2.044069_wp/180.0_wp)    ! S1
-        v0linearintercept( 5) = v0linearintercept( 5) - (rpi*8.289390_wp/180.0_wp)    ! K1
-        v0linearintercept( 6) = v0linearintercept( 6) - (rpi*2.065265_wp/180.0_wp)    ! 2N2
-        v0linearintercept( 7) = v0linearintercept( 7) + (rpi*0.435315_wp/180.0_wp)    ! MU2
-        v0linearintercept( 8) = v0linearintercept( 8) - (rpi*1.732874_wp/180.0_wp)    ! N2
-        v0linearintercept( 9) = v0linearintercept( 9) - (rpi*2.467160_wp/180.0_wp)    ! NU2
-        v0linearintercept(10) = v0linearintercept(10) - (rpi*2.003909_wp/180.0_wp)    ! M2
-        v0linearintercept(11) = v0linearintercept(11) + (rpi*1.349939_wp/180.0_wp)    ! L2
-        v0linearintercept(12) = v0linearintercept(12) + (rpi*1.468170_wp/180.0_wp)    ! T2
-        v0linearintercept(13) = v0linearintercept(13) + (rpi*0.119842_wp/180.0_wp)    ! S2
-        v0linearintercept(14) = v0linearintercept(14) - (rpi*15.689068_wp/180.0_wp)   ! K2
-        v0linearintercept(14) = v0linearintercept(15) + (rpi*4.011896_wp/180.0_wp)    ! M4
+!        v0linearintercept( 1) = v0linearintercept( 1) - (rpi*46.525902_wp/180.0_wp)   ! Q1
+!        v0linearintercept( 2) = v0linearintercept( 2) + (rpi*1.829931_wp/180.0_wp)    ! O1
+!        v0linearintercept( 3) = v0linearintercept( 3) + (rpi*120.843575_wp/180.0_wp)  ! P1
+!        v0linearintercept( 4) = v0linearintercept( 4) - (rpi*2.044069_wp/180.0_wp)    ! S1
+!        v0linearintercept( 5) = v0linearintercept( 5) - (rpi*8.289390_wp/180.0_wp)    ! K1
+!        v0linearintercept( 6) = v0linearintercept( 6) - (rpi*2.065265_wp/180.0_wp)    ! 2N2
+!        v0linearintercept( 7) = v0linearintercept( 7) + (rpi*0.435315_wp/180.0_wp)    ! MU2
+!        v0linearintercept( 8) = v0linearintercept( 8) - (rpi*1.732874_wp/180.0_wp)    ! N2
+!        v0linearintercept( 9) = v0linearintercept( 9) - (rpi*2.467160_wp/180.0_wp)    ! NU2
+!        v0linearintercept(10) = v0linearintercept(10) - (rpi*2.003909_wp/180.0_wp)    ! M2
+!        v0linearintercept(11) = v0linearintercept(11) + (rpi*1.349939_wp/180.0_wp)    ! L2
+!        v0linearintercept(12) = v0linearintercept(12) + (rpi*1.468170_wp/180.0_wp)    ! T2
+!        v0linearintercept(13) = v0linearintercept(13) + (rpi*0.119842_wp/180.0_wp)    ! S2
+!        v0linearintercept(14) = v0linearintercept(14) - (rpi*15.689068_wp/180.0_wp)   ! K2
+!        v0linearintercept(14) = v0linearintercept(15) + (rpi*4.011896_wp/180.0_wp)    ! M4
 
 
 
@@ -1049,7 +1275,17 @@ CONTAINS
 
          IF ( ln_tide_compress ) THEN
 
-             pvt(jh) = mod(  ( (v0linearslope(jh)*days_since_origin) + v0linearintercept(  ktide(jh)  ) ),  2*rpi)-(2*rpi)
+            v0linearintercept(jh) = sh_T_o * Wave( ktide(jh) )%nT    &
+                &    + sh_s_o * Wave( ktide(jh) )%ns    &
+                &    + sh_h_o * Wave( ktide(jh) )%nh    &
+                &    + sh_p_o * Wave( ktide(jh) )%np    &
+                &    + sh_p1_o* Wave( ktide(jh) )%np1   &
+                &    +          Wave( ktide(jh) )%shift * rad
+
+
+
+             !JT pvt(jh) = mod(  ( (v0linearslope(jh)*days_since_origin) + v0linearintercept(  ktide(jh)  ) ),  2*rpi)-(2*rpi)
+             pvt(jh) = mod(  ( (v0linearslope(jh)*days_since_origin) + v0linearintercept(  jh  ) ),  2*rpi)-(2*rpi)
          ELSE
              pvt(jh) = sh_T * Wave( ktide(jh) )%nT    &
                 &    + sh_s * Wave( ktide(jh) )%ns    &
@@ -1058,6 +1294,9 @@ CONTAINS
                 &    + sh_p1* Wave( ktide(jh) )%np1   &
                 &    +        Wave( ktide(jh) )%shift * rad
          ENDIF
+
+         
+         
          !
          !  Phase correction u due to nodal motion. Units are radian:
          !  Cyclical with time. Much smaller terms than pvt. 
@@ -1066,6 +1305,16 @@ CONTAINS
             &    + sh_nuprim * Wave( ktide(jh) )%nnu1   &
             &    + sh_nusec  * Wave( ktide(jh) )%nnu2   &
             &    + sh_R      * Wave( ktide(jh) )%R
+
+
+
+
+
+         !JT
+         pvt(jh) = mod( pvt(jh),  2*rpi)
+         put(jh) = mod( put(jh),  2*rpi)
+         !JT
+
 
          !  Nodal correction factor:
          pcor(jh) = nodal_factort( Wave( ktide(jh) )%nformula )
@@ -1076,7 +1325,7 @@ CONTAINS
 
       IF(ln_astro_verbose .AND. lwp) THEN
           DO jh = 1, kc
-              WRITE(numout,*) 'astro tide_vuf 3:',jh,pvt(jh), put(jh), pcor(jh)      
+              WRITE(numout,*) 'astro tide_vuf 3,',jh,Wave(ktide(jh))%cname_tide, pomega(jh),2*rpi/(3600.0_wp*pomega(jh)),pvt(jh), put(jh), pcor(jh), mod(pvt(jh),2*rpi), mod(put(jh),2*rpi), 2*rpi
           END DO
       ENDIF
 
