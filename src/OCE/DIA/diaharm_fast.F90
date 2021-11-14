@@ -807,13 +807,14 @@ CONTAINS
 
           enddo
 
-         !tmp_name=TRIM(suffix)//'_tidal_anal_offset'
-         !IF( iom_use(TRIM(tmp_name)) )  THEN
-         !   IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
-         !   CALL iom_put( TRIM(tmp_name), g_cosamp2D( 0,:,:,jgrid))
-         !ELSE
-         !   IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
-         !ENDIF
+         suffix = TRIM( m_varName2d( m_posi_2d(jgrid) ) )
+         tmp_name='TA_'//TRIM(suffix)//'_off'
+         IF( iom_use(TRIM(tmp_name)) )  THEN
+            IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
+            CALL iom_put( TRIM(tmp_name), g_cosamp2D( 0,:,:,jgrid))
+         ELSE
+            IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
+         ENDIF
 
       enddo
 !
@@ -871,15 +872,18 @@ CONTAINS
 
           enddo             ! jh 
 
-         !tmp_name=TRIM(suffix)//'_tidal_anal_offset'
-         !IF( iom_use(TRIM(tmp_name)) )  THEN
-         !   IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
-         !   CALL iom_put( TRIM(tmp_name), g_cosamp3D( 0,:,:,:,jgrid))
-         !ELSE
-         !   IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
-         !ENDIF
+         suffix = TRIM( m_varName3d( m_posi_3d(jgrid) ) )
+         tmp_name='TA_'//TRIM(suffix)//'_off'
+         IF( iom_use(TRIM(tmp_name)) )  THEN
+            IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
+            CALL iom_put( TRIM(tmp_name), g_cosamp3D( 0,:,:,:,jgrid))
+         ELSE
+            IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
+         ENDIF
 
       enddo                 ! jgrid
+
+
 !
    END SUBROUTINE harm_ana_out
 !
