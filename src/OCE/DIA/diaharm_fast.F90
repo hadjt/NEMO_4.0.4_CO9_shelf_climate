@@ -5,8 +5,6 @@ MODULE diaharm_fast
    !!                 
    !!=====================================================================
 
-#if defined key_diaharm_fast 
-
    !!----------------------------------------------------------------------
    !!   'key_harm_ana'  :                Calculate harmonic analysis
    !!----------------------------------------------------------------------
@@ -884,6 +882,23 @@ CONTAINS
       enddo                 ! jgrid
 
 
+
+! to output tidal parameters, u and v on t grid
+!
+!                                  !==  standard Cd  ==!
+!         DO jj = 2, jpjm1
+!            DO ji = 2, jpim1
+!               imk = k_mk(ji,jj)    ! ocean bottom level at t-points
+!               zut = un(ji,jj,imk) + un(ji-1,jj,imk)     ! 2 x velocity at t-point
+!               zvt = vn(ji,jj,imk) + vn(ji,jj-1,imk)
+!               !                                                           ! here pCd0 = mask*boost * drag
+!               pCdU(ji,jj) = - pCd0(ji,jj) * SQRT(  0.25 * ( zut*zut + zvt*zvt ) + pke0  )
+!            END DO
+!         END DO
+
+
+
+
 !
    END SUBROUTINE harm_ana_out
 !
@@ -1032,31 +1047,5 @@ CONTAINS
    END SUBROUTINE harm_rst_read
 
    !!======================================================================
-#else
-!!---------------------------------------------------------------------------------
-!!   Dummy module                                   NO harmonic Analysis
-!!---------------------------------------------------------------------------------
-        LOGICAL, PUBLIC, PARAMETER :: lk_diaharm_fast  = .FALSE.   ! to be run or not
-
-        CONTAINS
-           SUBROUTINE harm_rst_write(kt)     ! Dummy routine
-           END SUBROUTINE harm_rst_write
-           SUBROUTINE harm_rst_read    ! Dummy routine
-           END SUBROUTINE harm_rst_read
-           SUBROUTINE harm_ana_out      ! Dummy routine
-           END SUBROUTINE harm_ana_out
-           SUBROUTINE harm_ana_init
-           END SUBROUTINE harm_ana_init
-           SUBROUTINE harm_ana( kt )
-!--- NB : end call not properly written
-           END SUBROUTINE harm_ana
-!           END SUBROUTINE harm_ana_init
-!--- END NB
-           SUBROUTINE gelim (a,b,x,n)
-!--- NB : end call not properly written
-           END SUBROUTINE gelim
-!           END SUBROUTINE gelim (a,b,x,n)
-!--- END NB           
-#endif
 
 END MODULE diaharm_fast 
