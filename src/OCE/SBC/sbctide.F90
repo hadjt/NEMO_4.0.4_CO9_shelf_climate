@@ -18,6 +18,8 @@ MODULE sbctide
 
    USE bdytides ! davbyr - Access to love number
 
+   USE tide_mod
+
    IMPLICIT NONE
    PUBLIC
 
@@ -47,6 +49,7 @@ CONTAINS
       INTEGER, INTENT( in ) ::   kt     ! ocean time-step
       INTEGER               ::   jk     ! dummy loop index
       INTEGER               ::   nsec_day_orig     ! Temporary variable
+      CHARACTER (len=40) :: tmp_name
       !!----------------------------------------------------------------------
       
       IF( nsec_day == NINT(0.5_wp * rdt) .OR. kt == nit000 ) THEN      ! start a new day
@@ -96,8 +99,69 @@ CONTAINS
          ! Reset nsec_day
          nsec_day = nsec_day_orig 
       ENDIF
+
+
+        DO jk = 1, nb_harmo
+
+
+
+
+            tmp_name=TRIM(Wave(ntide(jk))%cname_tide)//'_utide'
+            IF( iom_use(TRIM(tmp_name)) )  THEN
+            !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anau(jh) )
+                CALL iom_put( TRIM(tmp_name), utide(jk) )
+            !ELSE
+            !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
+            ENDIF    
+
+            tmp_name=TRIM(Wave(ntide(jk))%cname_tide)//'_v0tide'
+            IF( iom_use(TRIM(tmp_name)) )  THEN
+            !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anau(jh) )
+                CALL iom_put( TRIM(tmp_name), v0tide(jk) )
+            !ELSE
+            !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
+            ENDIF    
+
+            tmp_name=TRIM(Wave(ntide(jk))%cname_tide)//'_v0tide_origin'
+            IF( iom_use(TRIM(tmp_name)) )  THEN
+            !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anau(jh) )
+                CALL iom_put( TRIM(tmp_name), v0linearintercept(jk) )
+            !ELSE
+            !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
+            ENDIF    
+
+
+            tmp_name=TRIM(Wave(ntide(jk))%cname_tide)//'_ftide'
+            IF( iom_use(TRIM(tmp_name)) )  THEN
+            !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anau(jh) )
+                CALL iom_put( TRIM(tmp_name), ftide(jk) )
+            !ELSE
+            !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
+            ENDIF    
+
+
+            tmp_name=TRIM(Wave(ntide(jk))%cname_tide)//'_per'
+            IF( iom_use(TRIM(tmp_name)) )  THEN
+            !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anau(jh) )
+                CALL iom_put( TRIM(tmp_name), 2*rpi/(3600.0_wp*omega_tide(jk)) )
+            !ELSE
+            !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
+            ENDIF    
+
+
+            tmp_name=TRIM(Wave(ntide(jk))%cname_tide)//'_freq'
+            IF( iom_use(TRIM(tmp_name)) )  THEN
+            !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anau(jh) )
+                CALL iom_put( TRIM(tmp_name), omega_tide(jk) )
+            !ELSE
+            !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
+            ENDIF    
+
+
+        END DO
       !
    END SUBROUTINE sbc_tide
+
 
 
    SUBROUTINE tide_init_potential

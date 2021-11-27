@@ -6,7 +6,7 @@ MODULE diaharm_fast
    !!=====================================================================
 
    !!----------------------------------------------------------------------
-   !!   'key_harm_ana'  :                Calculate harmonic analysis
+   !!                   :                Calculate harmonic analysis
    !!----------------------------------------------------------------------
    !!   harm_ana        :
    !!   harm_ana_init   :
@@ -161,34 +161,34 @@ CONTAINS
       ENDIF
 
         
-    DO jh = 1, nb_ana       
+!    DO jh = 1, nb_ana       
 
-        tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_anau_utide'
-        IF( iom_use(TRIM(tmp_name)) )  THEN
-        !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anau(jh) )
-            CALL iom_put( TRIM(tmp_name), anau(jh) )
-        !ELSE
-        !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
-        ENDIF    
+!        tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_anau_utide'
+!        IF( iom_use(TRIM(tmp_name)) )  THEN
+!        !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anau(jh) )
+!            CALL iom_put( TRIM(tmp_name), anau(jh) )
+!        !ELSE
+!        !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
+!        ENDIF    
 
-        tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_anav_v0tide'
-        IF( iom_use(TRIM(tmp_name)) )  THEN
-        !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anav(jh) )
-            CALL iom_put( TRIM(tmp_name), anav(jh) )
-        !ELSE
-        !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
-        ENDIF
+!        tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_anav_v0tide'
+!        IF( iom_use(TRIM(tmp_name)) )  THEN
+!        !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anav(jh) )
+!            CALL iom_put( TRIM(tmp_name), anav(jh) )
+!        !ELSE
+!        !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
+!        ENDIF
 
-        tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_anaf_ftide'
-        IF( iom_use(TRIM(tmp_name)) )  THEN
-        !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anaf(jh) )
-            CALL iom_put( TRIM(tmp_name), anaf(jh) )
-        !ELSE
-        !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
-        ENDIF
+!        tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_anaf_ftide'
+!        IF( iom_use(TRIM(tmp_name)) )  THEN
+!        !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anaf(jh) )
+!            CALL iom_put( TRIM(tmp_name), anaf(jh) )
+!        !ELSE
+!        !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
+!        ENDIF
 
-     END DO
-       
+!     END DO
+!       
 
      IF ( ln_diaharm_fast .and. ln_diaharm_store .and. ( lk_diaharm_2D .or. lk_diaharm_3D) ) THEN
 
@@ -198,6 +198,15 @@ CONTAINS
 
           sec2start_old = nint( (fjulday-fjulday_startharm)*86400._wp ) 
           sec2start = nsec_day - NINT(0.5_wp * rdt)
+
+
+
+
+          IF( iom_use('tide_t') ) CALL iom_put( 'tide_t', sec2start )
+
+
+
+
           !IF(lwp) WRITE(numout,*) "ztime NEW", kt, sec2start, fjulday_startharm
 
           DO jh=1,nb_ana

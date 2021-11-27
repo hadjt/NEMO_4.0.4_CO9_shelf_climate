@@ -14,6 +14,7 @@ MODULE tide_mod
    USE in_out_manager ! I/O units
    USE ioipsl  , ONLY :   ymds2ju      ! for calendar
 
+   USE iom
 
    IMPLICIT NONE
    PRIVATE
@@ -24,6 +25,11 @@ MODULE tide_mod
 
    ! davbyr: increase maximum number of harmonics from 19 to 34
    INTEGER, PUBLIC, PARAMETER ::   jpmax_harmo = 34   !: maximum number of harmonic
+
+
+   REAL(wp), PUBLIC, ALLOCATABLE, DIMENSION(:) ::   v0linearintercept            
+
+
 
    TYPE, PUBLIC ::    tide
       CHARACTER(LEN=4) ::   cname_tide
@@ -139,7 +145,8 @@ CONTAINS
           WRITE(numout,*) "       tides360: Gregorian calendar so using standard tides"
       ENDIF
 
-      IF ( ln_tide_compress   )  CALL astronomic_angle_origin
+      !IF ( ln_tide_compress   )  
+      CALL astronomic_angle_origin
 
    END SUBROUTINE tide_init_calendar_options
 
@@ -968,10 +975,13 @@ CONTAINS
       !! JT for compress
       REAL(wp)                             :: hours_since_origin
       REAL(wp), DIMENSION(kc) ::   pomega           ! pulsation in radians/s
-      REAL(wp), DIMENSION(kc) ::   freq_per_day,   v0linearslope,v0linearintercept             ! pulsation in radians/s  !offset,cycle_reset,freq,per_hr
+      REAL(wp), DIMENSION(kc) ::   freq_per_day,   v0linearslope ! ,v0linearintercept             ! pulsation in radians/s  !offset,cycle_reset,freq,per_hr
+      CHARACTER (len=40) :: tmp_name
       !! JT for compress
 
 
+      IF( .NOT. ALLOCATED(v0linearintercept) )  ALLOCATE( v0linearintercept(kc)   )
+    
 
       IF ( ln_tide_compress) THEN
 
@@ -1273,16 +1283,15 @@ CONTAINS
          !  meridian (e.g. the position of the fictuous celestial body). Units are radian:
          !  Linear with time
 
+        v0linearintercept(jh) = sh_T_o * Wave( ktide(jh) )%nT    &
+            &    + sh_s_o * Wave( ktide(jh) )%ns    &
+            &    + sh_h_o * Wave( ktide(jh) )%nh    &
+            &    + sh_p_o * Wave( ktide(jh) )%np    &
+            &    + sh_p1_o* Wave( ktide(jh) )%np1   &
+            &    +          Wave( ktide(jh) )%shift * rad
+
+
          IF ( ln_tide_compress ) THEN
-
-            v0linearintercept(jh) = sh_T_o * Wave( ktide(jh) )%nT    &
-                &    + sh_s_o * Wave( ktide(jh) )%ns    &
-                &    + sh_h_o * Wave( ktide(jh) )%nh    &
-                &    + sh_p_o * Wave( ktide(jh) )%np    &
-                &    + sh_p1_o* Wave( ktide(jh) )%np1   &
-                &    +          Wave( ktide(jh) )%shift * rad
-
-
 
              !JT pvt(jh) = mod(  ( (v0linearslope(jh)*days_since_origin) + v0linearintercept(  ktide(jh)  ) ),  2*rpi)-(2*rpi)
              pvt(jh) = mod(  ( (v0linearslope(jh)*days_since_origin) + v0linearintercept(  jh  ) ),  2*rpi)-(2*rpi)
@@ -1328,6 +1337,57 @@ CONTAINS
               WRITE(numout,*) 'astro tide_vuf 3,',jh,Wave(ktide(jh))%cname_tide, pomega(jh),2*rpi/(3600.0_wp*pomega(jh)),pvt(jh), put(jh), pcor(jh), mod(pvt(jh),2*rpi), mod(put(jh),2*rpi), 2*rpi
           END DO
       ENDIF
+
+
+
+
+    DO jh = 1, kc       
+
+        tmp_name=TRIM(Wave(ktide(jh))%cname_tide)//'_utide'
+        IF( iom_use(TRIM(tmp_name)) )  THEN
+        !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anau(jh) )
+            CALL iom_put( TRIM(tmp_name), put(jh) )
+        !ELSE
+        !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
+        ENDIF    
+
+        tmp_name=TRIM(Wave(ktide(jh))%cname_tide)//'_v0tide'
+        IF( iom_use(TRIM(tmp_name)) )  THEN
+        !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anav(jh) )
+            CALL iom_put( TRIM(tmp_name), pvt(jh) )
+        !ELSE
+        !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
+        ENDIF
+
+        tmp_name=TRIM(Wave(ktide(jh))%cname_tide)//'_v0tide_origin'
+        IF( iom_use(TRIM(tmp_name)) )  THEN
+        !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anav(jh) )
+            CALL iom_put( TRIM(tmp_name), v0linearintercept(jh) )
+        !ELSE
+        !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
+        ENDIF
+
+
+
+
+        tmp_name=TRIM(Wave(ktide(jh))%cname_tide)//'_ftide'
+        IF( iom_use(TRIM(tmp_name)) )  THEN
+        !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anaf(jh) )
+            CALL iom_put( TRIM(tmp_name), pcor(jh) )
+        !ELSE
+        !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
+        ENDIF
+
+     END DO
+
+
+
+
+
+
+
+
+
 
 
 
