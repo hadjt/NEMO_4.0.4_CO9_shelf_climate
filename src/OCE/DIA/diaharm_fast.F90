@@ -82,6 +82,7 @@ MODULE diaharm_fast
    LOGICAL, PUBLIC :: ln_diaharm_update_nodal_daily   !: =T  update the nodes every day
    LOGICAL, PUBLIC :: ln_diaharm_fast
 
+
    !JT
    LOGICAL, PUBLIC :: ln_ana_ssh, ln_ana_uvbar, ln_ana_bfric, ln_ana_rho, ln_ana_uv3d, ln_ana_w3d
    INTEGER ::   nb_ana        ! Number of harmonics to analyse
@@ -160,36 +161,6 @@ CONTAINS
          ENDIF
       ENDIF
 
-        
-!    DO jh = 1, nb_ana       
-
-!        tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_anau_utide'
-!        IF( iom_use(TRIM(tmp_name)) )  THEN
-!        !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anau(jh) )
-!            CALL iom_put( TRIM(tmp_name), anau(jh) )
-!        !ELSE
-!        !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
-!        ENDIF    
-
-!        tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_anav_v0tide'
-!        IF( iom_use(TRIM(tmp_name)) )  THEN
-!        !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anav(jh) )
-!            CALL iom_put( TRIM(tmp_name), anav(jh) )
-!        !ELSE
-!        !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
-!        ENDIF
-
-!        tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_anaf_ftide'
-!        IF( iom_use(TRIM(tmp_name)) )  THEN
-!        !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anaf(jh) )
-!            CALL iom_put( TRIM(tmp_name), anaf(jh) )
-!        !ELSE
-!        !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
-!        ENDIF
-
-!     END DO
-!       
-
      IF ( ln_diaharm_fast .and. ln_diaharm_store .and. ( lk_diaharm_2D .or. lk_diaharm_3D) ) THEN
 
           ! this bit done every time step
@@ -199,8 +170,10 @@ CONTAINS
           sec2start_old = nint( (fjulday-fjulday_startharm)*86400._wp ) 
           sec2start = nsec_day - NINT(0.5_wp * rdt)
 
+          sec2start = adatrj * 86400._wp
 
-
+          
+          IF(lwp) WRITE(numout,*) 'diaharm_fast: sec2start = ',nint( (fjulday-fjulday_startharm)*86400._wp ),nsec_day - NINT(0.5_wp * rdt),adatrj * 86400._wp
 
           IF( iom_use('tide_t') ) CALL iom_put( 'tide_t', sec2start )
 
@@ -212,8 +185,13 @@ CONTAINS
           DO jh=1,nb_ana
              c(2*jh  ) = anaf(jh)*cos( sec2start*om_tide(jh) + anau(jh) + anav(jh) )
              c(2*jh+1) = anaf(jh)*sin( sec2start*om_tide(jh) + anau(jh) + anav(jh) )
+
+             c(2*jh  ) = anaf(jh)*cos( sec2start*om_tide(jh) + anau(jh) )
+             c(2*jh+1) = anaf(jh)*sin( sec2start*om_tide(jh) + anau(jh) )
+
+
              
-             IF(lwp) WRITE(numout,*) 'diaharm_fast: analwave,',kt,tname(jh),sec2start,sec2start/3600.,sec2start_old,sec2start_old/3600,c(2*jh),c(2*jh+1),om_tide(jh),anau(jh),anav(jh)
+             !IF(lwp) WRITE(numout,*) 'diaharm_fast: analwave,',kt,tname(jh),sec2start,sec2start/3600.,sec2start_old,sec2start_old/3600,c(2*jh),c(2*jh+1),om_tide(jh),anau(jh),anav(jh)
           ENDDO 
 
           !IF(lwp) WRITE(numout,*) "c init", c, "c end", sec2start, om_tide(1), anau(1), anav(1),"end nodal"
@@ -763,6 +741,7 @@ CONTAINS
       CHARACTER (len=40) :: tmp_name
 !      REAL(wp) :: zsto1, zsto2, zout, zmax, zjulian, zdt, zmdi  ! temporary scalars
 
+
       do jgrid=1,nvar_2d
           do jh=1,nb_ana
              h_out2D = 0.0
@@ -781,7 +760,10 @@ CONTAINS
                        h_out2D(ji,jj)=h_out2D(ji,jj)/anaf(jh)
                    ENDIF
                    IF (g_out2D(ji,jj).ne.0) THEN  !Correct and take modulus
-                       g_out2D(ji,jj) = g_out2D(ji,jj) + MOD( (anau(jh)+anav(jh))/rad , 360.0)
+                       !JT 
+                       !JT  g_out2D(ji,jj) = g_out2D(ji,jj) + MOD( (anau(jh)+anav(jh))/rad , 360.0)
+                       !JT 
+                       g_out2D(ji,jj) = g_out2D(ji,jj) + MOD( (anau(jh))/rad , 360.0)
                        if (g_out2D(ji,jj).gt.360.0) then
                            g_out2D(ji,jj)=g_out2D(ji,jj)-360.0
                        else if (g_out2D(ji,jj).lt.0.0) then
@@ -798,7 +780,7 @@ CONTAINS
              tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'amp_'//TRIM(suffix)
              IF( iom_use(TRIM(tmp_name)) )  THEN
                 IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(h_out2D)
-                IF(lwp) WRITE(numout,*) "harm_ana_out_names", tmp_name,tname(jh),' ',om_tide(jh), (2*rpi/3600.)/om_tide(jh),"hr"
+                IF(lwp) WRITE(numout,*) "harm_ana_out names", tmp_name,tname(jh),' ',om_tide(jh), (2*rpi/3600.)/om_tide(jh),"hr"
                 CALL iom_put( TRIM(tmp_name), h_out2D(:,:) )
              ELSE
                 IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
@@ -812,6 +794,11 @@ CONTAINS
                 IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
              ENDIF
 
+
+
+             CALL FLUSH(numout)
+
+
           enddo
 
          suffix = TRIM( m_varName2d( m_posi_2d(jgrid) ) )
@@ -822,6 +809,8 @@ CONTAINS
          ELSE
             IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
          ENDIF
+
+         CALL FLUSH(numout)
 
       enddo
 !
@@ -846,7 +835,10 @@ CONTAINS
                           h_out3D(ji,jj,jk) = h_out3D(ji,jj,jk)/anaf(jh)
                       ENDIF
                       IF (g_out3D(ji,jj,jk).ne.0) THEN  !Correct and take modulus
-                          g_out3D(ji,jj,jk) = g_out3D(ji,jj,jk) + MOD( (anau(jh)+anav(jh))/rad , 360.0)
+                          !JT                        
+                          !JT g_out3D(ji,jj,jk) = g_out3D(ji,jj,jk) + MOD( (anau(jh)+anav(jh))/rad , 360.0)
+                          !JT 
+                          g_out3D(ji,jj,jk) = g_out3D(ji,jj,jk) + MOD( (anau(jh))/rad , 360.0)
                           if      (g_out3D(ji,jj,jk).gt.360.0) then
                                    g_out3D(ji,jj,jk) = g_out3D(ji,jj,jk)-360.0
                           else if (g_out3D(ji,jj,jk).lt.0.0) then
@@ -890,6 +882,7 @@ CONTAINS
 
       enddo                 ! jgrid
 
+     CALL FLUSH(numout)
 
 
 ! to output tidal parameters, u and v on t grid
@@ -907,8 +900,6 @@ CONTAINS
 
 
 
-
-!
    END SUBROUTINE harm_ana_out
 !
    SUBROUTINE harm_rst_write(kt)
