@@ -162,6 +162,10 @@ CONTAINS
          ENDIF
       ENDIF
 
+     !IF( iom_use('diaharm_fast_eg_ssh_ts') ) THEN
+     !   IF (lwp) CALL iom_put( 'diaharm_fast_eg_ssh_ts', sshn(5,5) )
+     !ENDIF
+
      IF ( ln_diaharm_fast .and. ln_diaharm_store .and. ( lk_diaharm_2D .or. lk_diaharm_3D) ) THEN
 
           ! this bit done every time step
@@ -177,6 +181,7 @@ CONTAINS
           IF(lwp) WRITE(numout,*) 'diaharm_fast: sec2start = ',nint( (fjulday-fjulday_startharm)*86400._wp ),nsec_day - NINT(0.5_wp * rdt),adatrj * 86400._wp
 
           IF( iom_use('tide_t') ) CALL iom_put( 'tide_t', sec2start )
+
 
 
 
