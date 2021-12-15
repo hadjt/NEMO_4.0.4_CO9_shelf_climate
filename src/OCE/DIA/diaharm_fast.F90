@@ -751,30 +751,58 @@ CONTAINS
 !      REAL(wp) :: zsto1, zsto2, zout, zmax, zjulian, zdt, zmdi  ! temporary scalars
 
       REAL(wp), ALLOCATABLE,DIMENSION(:,:,:)       :: amp_u2d,phi_u2d, amp_v2d,phi_v2d  ! arrays for output
+      REAL(wp), ALLOCATABLE,DIMENSION(:,:,:,:)     :: amp_u3d,phi_u3d, amp_v3d,phi_v3d  ! arrays for output
 
       REAL(wp)   :: tmp_u_amp ,tmp_v_amp ,tmp_u_phi ,tmp_v_phi
       REAL(wp)   :: a_u, b_u, a_v, b_v, twodelta, delta, alpha2, alpha, qmin, qmax, ecc,thetamax, thetamin
       REAL(wp)   :: Qc, Qac, gc,gac, Phi_Ua, dir_Ua, polarity
       REAL(wp)   :: tmpreal
 
-      REAL(wp), ALLOCATABLE,DIMENSION(:,:)         :: tmp_u_amp_mat,tmp_v_amp_mat,tmp_u_phi_mat,tmp_v_phi_mat
-!      REAL(wp), ALLOCATABLE,DIMENSION(:,:)         :: a_u_mat,b_u_mat,a_v_mat,b_v_mat,qmax_mat,qmin_mat,ecc_mat
-!      REAL(wp), ALLOCATABLE,DIMENSION(:,:)         :: thetamax_mat,thetamin_mat,Qc_mat,Qac_mat,gc_mat,gac_mat
-!      REAL(wp), ALLOCATABLE,DIMENSION(:,:)         :: Phi_Ua_mat,dir_Ua_mat,polarity_mat
+      REAL(wp), ALLOCATABLE,DIMENSION(:,:)         :: tmp_u_amp_2d_mat,tmp_v_amp_2d_mat,tmp_u_phi_2d_mat,tmp_v_phi_2d_mat
+      REAL(wp), ALLOCATABLE,DIMENSION(:,:)         :: a_u_2d_mat,b_u_2d_mat,a_v_2d_mat,b_v_2d_mat
+      REAL(wp), ALLOCATABLE,DIMENSION(:,:)         :: qmax_2d_mat,qmin_2d_mat,ecc_2d_mat
+      REAL(wp), ALLOCATABLE,DIMENSION(:,:)         :: thetamax_2d_mat,thetamin_2d_mat,Qc_2d_mat,Qac_2d_mat
+      REAL(wp), ALLOCATABLE,DIMENSION(:,:)         :: gc_2d_mat,gac_2d_mat,Phi_Ua_2d_mat,dir_Ua_2d_mat
+      REAL(wp), ALLOCATABLE,DIMENSION(:,:)         :: polarity_2d_mat
+
+      REAL(wp), ALLOCATABLE,DIMENSION(:,:,:)       :: tmp_u_amp_3d_mat,tmp_v_amp_3d_mat,tmp_u_phi_3d_mat,tmp_v_phi_3d_mat
+      REAL(wp), ALLOCATABLE,DIMENSION(:,:,:)       :: a_u_3d_mat,b_u_3d_mat,a_v_3d_mat,b_v_3d_mat
+      REAL(wp), ALLOCATABLE,DIMENSION(:,:,:)       :: qmax_3d_mat,qmin_3d_mat,ecc_3d_mat
+      REAL(wp), ALLOCATABLE,DIMENSION(:,:,:)       :: thetamax_3d_mat,thetamin_3d_mat,Qc_3d_mat,Qac_3d_mat
+      REAL(wp), ALLOCATABLE,DIMENSION(:,:,:)       :: gc_3d_mat,gac_3d_mat,Phi_Ua_3d_mat,dir_Ua_3d_mat
+      REAL(wp), ALLOCATABLE,DIMENSION(:,:,:)       :: polarity_3d_mat
 
 
 
-!      IF (ln_diaharm_postproc_vel .AND. ln_ana_uvbar)  THEN
-!         ALLOCATE( amp_u2d(jh,jpi,jpj),amp_v2d(jh,jpi,jpj),phi_u2d(jh,jpi,jpj),phi_v2d(jh,jpi,jpj) )
+
+      IF (ln_diaharm_postproc_vel)  THEN
+          IF (ln_ana_uvbar)  THEN
+             ALLOCATE( amp_u2d(nb_ana,jpi,jpj), amp_v2d(nb_ana,jpi,jpj), phi_u2d(nb_ana,jpi,jpj), phi_v2d(nb_ana,jpi,jpj) )
 
 
-!         ALLOCATE(tmp_u_amp_mat(jpi,jpj),tmp_v_amp_mat(jpi,jpj),tmp_u_phi_mat(jpi,jpj),tmp_v_phi_mat(jpi,jpj))
-!!         ALLOCATE(a_u_mat(jpi,jpj),b_u_mat(jpi,jpj),a_v_mat(jpi,jpj),b_v_mat(jpi,jpj))
-!!         ALLOCATE(qmax_mat(jpi,jpj),qmin_mat(jpi,jpj),ecc_mat(jpi,jpj))
-!!         ALLOCATE(thetamax_mat(jpi,jpj),thetamin_mat(jpi,jpj),Qc_mat(jpi,jpj),Qac_mat(jpi,jpj))
-!!         ALLOCATE(gc_mat(jpi,jpj),gac_mat(jpi,jpj),Phi_Ua_mat(jpi,jpj),dir_Ua_mat(jpi,jpj),polarity_mat(jpi,jpj))
+             ALLOCATE(tmp_u_amp_2d_mat(jpi,jpj),tmp_v_amp_2d_mat(jpi,jpj),tmp_u_phi_2d_mat(jpi,jpj),tmp_v_phi_2d_mat(jpi,jpj))
+             ALLOCATE(a_u_2d_mat(jpi,jpj),b_u_2d_mat(jpi,jpj),a_v_2d_mat(jpi,jpj),b_v_2d_mat(jpi,jpj))
+             ALLOCATE(qmax_2d_mat(jpi,jpj),qmin_2d_mat(jpi,jpj),ecc_2d_mat(jpi,jpj))
+             ALLOCATE(thetamax_2d_mat(jpi,jpj),thetamin_2d_mat(jpi,jpj),Qc_2d_mat(jpi,jpj),Qac_2d_mat(jpi,jpj))
+             ALLOCATE(gc_2d_mat(jpi,jpj),gac_2d_mat(jpi,jpj),Phi_Ua_2d_mat(jpi,jpj),dir_Ua_2d_mat(jpi,jpj))
+             ALLOCATE(polarity_2d_mat(jpi,jpj))
 
-!      endif
+          ENDIF
+
+
+          IF (ln_ana_uv3d)  THEN
+             ALLOCATE( amp_u3d(nb_ana,jpi,jpj,jpk), amp_v3d(nb_ana,jpi,jpj,jpk), phi_u3d(nb_ana,jpi,jpj,jpk), phi_v3d(nb_ana,jpi,jpj,jpk) )
+
+
+             ALLOCATE(tmp_u_amp_3d_mat(jpi,jpj,jpk),tmp_v_amp_3d_mat(jpi,jpj,jpk),tmp_u_phi_3d_mat(jpi,jpj,jpk),tmp_v_phi_3d_mat(jpi,jpj,jpk))
+             ALLOCATE(a_u_3d_mat(jpi,jpj,jpk),b_u_3d_mat(jpi,jpj,jpk),a_v_3d_mat(jpi,jpj,jpk),b_v_3d_mat(jpi,jpj,jpk))
+             ALLOCATE(qmax_3d_mat(jpi,jpj,jpk),qmin_3d_mat(jpi,jpj,jpk),ecc_3d_mat(jpi,jpj,jpk))
+             ALLOCATE(thetamax_3d_mat(jpi,jpj,jpk),thetamin_3d_mat(jpi,jpj,jpk),Qc_3d_mat(jpi,jpj,jpk),Qac_3d_mat(jpi,jpj,jpk))
+             ALLOCATE(gc_3d_mat(jpi,jpj,jpk),gac_3d_mat(jpi,jpj,jpk),Phi_Ua_3d_mat(jpi,jpj,jpk),dir_Ua_3d_mat(jpi,jpj,jpk))
+             ALLOCATE(polarity_3d_mat(jpi,jpj,jpk))
+
+          ENDIF
+      ENDIF
 
       do jgrid=1,nvar_2d
           do jh=1,nb_ana
@@ -809,45 +837,63 @@ CONTAINS
              !
              ! NETCDF OUTPUT
              suffix = TRIM( m_varName2d( m_posi_2d(jgrid) ) )
-             IF(lwp) WRITE(numout,*) "harm_ana_out", suffix
+             IF(lwp) WRITE(numout,*) "diaharm_fast", suffix
 
              tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'amp_'//TRIM(suffix)
              IF( iom_use(TRIM(tmp_name)) )  THEN
-                IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(h_out2D)
-                IF(lwp) WRITE(numout,*) "harm_ana_out names", tmp_name,tname(jh),' ',om_tide(jh), (2*rpi/3600.)/om_tide(jh),"hr"
+                IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(h_out2D)
+                IF(lwp) WRITE(numout,*) "diaharm_fast names", tmp_name,tname(jh),' ',om_tide(jh), (2*rpi/3600.)/om_tide(jh),"hr"
                 CALL iom_put( TRIM(tmp_name), h_out2D(:,:) )
              ELSE
-                IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
+                IF(lwp) WRITE(numout,*) "diaharm_fast: not requested: ",TRIM(tmp_name)
              ENDIF
 
              tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'pha_'//TRIM(suffix)
              IF( iom_use(TRIM(tmp_name)) )  THEN
-                IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(g_out2D)
+                IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(g_out2D)
                 CALL iom_put( TRIM(tmp_name), g_out2D(:,:) )
              ELSE
-                IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
+                IF(lwp) WRITE(numout,*) "diaharm_fast: not requested: ",TRIM(tmp_name)
              ENDIF
 
 
 
-!             IF (ln_diaharm_postproc_vel .AND. ln_ana_uvbar)  THEN
+             IF (ln_diaharm_postproc_vel .AND. ln_ana_uvbar)  THEN
 
-!               !IF (m_posi_2d(jgrid) == 2) THEN
-!               IF (TRIM(suffix) == TRIM('u2d')) THEN
-!                  if (lwp)  WRITE(numout,*) "harm_ana_out ln_diaharm_postproc_vel: "//TRIM(Wave(ntide_all(jh))%cname_tide)//' u2d  '//TRIM(suffix)
-!                  amp_u2d(jh,:,:) = h_out2D(:,:)
-!                  phi_u2d(jh,:,:) = rpi*g_out2D(:,:)/180.0
-!               ENDIF
+               !IF (m_posi_2d(jgrid) == 2) THEN
+               IF (TRIM(suffix) == TRIM('u2d')) THEN
+                 if (lwp)  WRITE(numout,*) "diaharm_fast ln_diaharm_postproc_vel: "//TRIM(Wave(ntide_all(jh))%cname_tide)//' u2d  '//TRIM(suffix)
+                 do jj=1,nlcj
+                    do ji=1,nlci
+                      if (ssumask(ji,jj) == 1) THEN
+                          amp_u2d(jh,ji,jj) = h_out2D(ji,jj)
+                          phi_u2d(jh,ji,jj) = rpi*g_out2D(ji,jj)/180.0
+                      else
+                          amp_u2d(jh,ji,jj) = 0.
+                          phi_u2d(jh,ji,jj) = 0.
+                      ENDIF
+                    enddo
+                 enddo
+               ENDIF
 
-!               !IF (m_posi_2d(jgrid) == 3) THEN
-!               IF (TRIM(suffix) == TRIM('v2d')) THEN
-!                  if (lwp)  WRITE(numout,*) "harm_ana_out ln_diaharm_postproc_vel: "//TRIM(Wave(ntide_all(jh))%cname_tide)//' v2d  '//TRIM(suffix)
-!                  amp_v2d(jh,:,:) = h_out2D(:,:)
-!                  phi_v2d(jh,:,:) = rpi*g_out2D(:,:)/180.0
-!               ENDIF
-!             ENDIF
+               !IF (m_posi_2d(jgrid) == 3) THEN
+               IF (TRIM(suffix) == TRIM('v2d')) THEN
+                 if (lwp)  WRITE(numout,*) "diaharm_fast ln_diaharm_postproc_vel: "//TRIM(Wave(ntide_all(jh))%cname_tide)//' v2d  '//TRIM(suffix)
+                 do jj=1,nlcj
+                    do ji=1,nlci
+                      if (ssvmask(ji,jj) == 1) THEN
+                          amp_v2d(jh,ji,jj) = h_out2D(ji,jj)
+                          phi_v2d(jh,ji,jj) = rpi*g_out2D(ji,jj)/180.0
+                      else
+                          amp_v2d(jh,ji,jj) = 0
+                          phi_v2d(jh,ji,jj) = 0
+                      ENDIF
+                    enddo
+                 enddo
+               ENDIF
+             ENDIF
 
-!             CALL FLUSH(numout)
+             CALL FLUSH(numout)
 
 
           enddo
@@ -855,10 +901,10 @@ CONTAINS
          suffix = TRIM( m_varName2d( m_posi_2d(jgrid) ) )
          tmp_name='TA_'//TRIM(suffix)//'_off'
          IF( iom_use(TRIM(tmp_name)) )  THEN
-            IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
+            IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
             CALL iom_put( TRIM(tmp_name), g_cosamp2D( 0,:,:,jgrid))
          ELSE
-            IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
+            IF(lwp) WRITE(numout,*) "diaharm_fast: not requested: ",TRIM(tmp_name)
          ENDIF
 
          CALL FLUSH(numout)
@@ -902,22 +948,22 @@ CONTAINS
              !
              ! NETCDF OUTPUT
              suffix = TRIM( m_varName3d( m_posi_3d(jgrid) ) )
-             IF(lwp) WRITE(numout,*) "harm_ana_out", suffix
+             IF(lwp) WRITE(numout,*) "diaharm_fast", suffix
 
              tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'amp_'//TRIM(suffix)
              IF( iom_use(TRIM(tmp_name)) )  THEN
-                IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(h_out3D)
+                IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(h_out3D)
                 CALL iom_put( TRIM(tmp_name), h_out3D(:,:,:) )
              ELSE
-                IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
+                IF(lwp) WRITE(numout,*) "diaharm_fast: not requested: ",TRIM(tmp_name)
              ENDIF
 
              tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'pha_'//TRIM(suffix)
              IF( iom_use(TRIM(tmp_name)) )  THEN
-                IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(g_out3D)
+                IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(g_out3D)
                 CALL iom_put(tmp_name, g_out3D(:,:,:) )
              ELSE
-                IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
+                IF(lwp) WRITE(numout,*) "diaharm_fast: not requested: ",TRIM(tmp_name)
              ENDIF
 
           enddo             ! jh 
@@ -925,322 +971,831 @@ CONTAINS
          suffix = TRIM( m_varName3d( m_posi_3d(jgrid) ) )
          tmp_name='TA_'//TRIM(suffix)//'_off'
          IF( iom_use(TRIM(tmp_name)) )  THEN
-            IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
+            IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
             CALL iom_put( TRIM(tmp_name), g_cosamp3D( 0,:,:,:,jgrid))
          ELSE
-            IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
+            IF(lwp) WRITE(numout,*) "diaharm_fast: not requested: ",TRIM(tmp_name)
          ENDIF
+
+
+
+
+
+
+             IF (ln_diaharm_postproc_vel .AND. ln_ana_uv3d)  THEN
+
+               !IF (m_posi_2d(jgrid) == 2) THEN
+               IF (TRIM(suffix) == TRIM('u3d')) THEN
+                 if (lwp)  WRITE(numout,*) "diaharm_fast ln_diaharm_postproc_vel: "//TRIM(Wave(ntide_all(jh))%cname_tide)//' u3d  '//TRIM(suffix)
+                 DO jk=1,jpkm1
+                     do jj=1,nlcj
+                        do ji=1,nlci
+                          if (umask(ji,jj,jk) == 1) THEN
+                              amp_u3d(jh,ji,jj,jk) = h_out3D(ji,jj,jk)
+                              phi_u3d(jh,ji,jj,jk) = rpi*g_out3D(ji,jj,jk)/180.0
+                          else
+                              amp_u3d(jh,ji,jj,jk) = 0.
+                              phi_u3d(jh,ji,jj,jk) = 0.
+                          ENDIF
+                        enddo
+                     enddo
+                 enddo
+               ENDIF
+
+               !IF (m_posi_2d(jgrid) == 3) THEN
+               IF (TRIM(suffix) == TRIM('v3d')) THEN
+                 if (lwp)  WRITE(numout,*) "diaharm_fast ln_diaharm_postproc_vel: "//TRIM(Wave(ntide_all(jh))%cname_tide)//' v3d  '//TRIM(suffix)
+                 DO jk=1,jpkm1
+                     do jj=1,nlcj
+                        do ji=1,nlci
+                          if (vmask(ji,jj,jk) == 1) THEN
+                              amp_v3d(jh,ji,jj,jk) = h_out3D(ji,jj,jk)
+                              phi_v3d(jh,ji,jj,jk) = rpi*g_out3D(ji,jj,jk)/180.0
+                          else
+                              amp_v3d(jh,ji,jj,jk) = 0
+                              phi_v3d(jh,ji,jj,jk) = 0
+                          ENDIF
+                        enddo
+                     enddo
+                 enddo
+               ENDIF
+             ENDIF
+
+             CALL FLUSH(numout)
 
       enddo                 ! jgrid
 
      CALL FLUSH(numout)
 
-!      IF (ln_diaharm_postproc_vel .AND. ln_ana_uvbar)  THEN
-!         IF(lwp) WRITE(numout,*) "diaharm_fast: Postprocess barotropic velocity tidal parameters"
-!         CALL FLUSH(numout)
-!         DO jh=1,nb_ana
 
 
-!            tmp_u_amp_mat(:,:) = 0.
-!            tmp_v_amp_mat(:,:) = 0.
-!            tmp_u_phi_mat(:,:) = 0.
-!            tmp_v_phi_mat(:,:) = 0.
 
-!!            a_u_mat(:,:) = 0.
-!!            b_u_mat(:,:) = 0.
-!!            a_v_mat(:,:) = 0.
-!!            b_v_mat(:,:) = 0.
 
-!!            qmax_mat(:,:) = 0.
-!!            qmin_mat(:,:) = 0.
 
-!!            ecc_mat(:,:) = 0
-!!            thetamax_mat(:,:) =0.
-!!            thetamin_mat(:,:) = 0.
 
-!!            Qc_mat(:,:) = 0.
-!!            Qac_mat(:,:) = 0.
-!!            gc_mat(:,:) = 0.
-!!            gac_mat(:,:) = 0.
 
-!!            Phi_Ua_mat(:,:) = 0.
-!!            dir_Ua_mat(:,:) = 0.
-!!            polarity_mat(:,:) = 0.
 
 
-!!             DO jj = 2, nlcj - 1
-!!                DO ji = 2, nlci - 1
 
-!!             do jj=2,nlcj
-!!                do ji=2,nlci
-!                    !IF ((ssumask(ji,jj) + ssumask(ji-1,jj)) == 0 ) CYCLE
-!                    !IF ((ssvmask(ji,jj) + ssvmask(ji,jj-1)) == 0 ) CYCLE
 
-!!                    IF ( ((ssumask(ji,jj) + ssumask(ji-1,jj)) > 0 ) .AND. ((ssvmask(ji,jj) + ssvmask(ji,jj-1)) > 0 ) ) THEN
-!!                        tmp_u_amp = ((amp_u2d(jh,ji,jj)*ssumask(ji,jj)) + (amp_u2d(jh,ji-1,jj)*ssumask(ji-1,jj)))/(ssumask(ji,jj) + ssumask(ji-1,jj))
-!!                        tmp_v_amp = ((amp_v2d(jh,ji,jj)*ssvmask(ji,jj)) + (amp_v2d(jh,ji,jj-1)*ssvmask(ji,jj-1)))/(ssvmask(ji,jj) + ssvmask(ji,jj-1))
-!!                        ! WORK ON THE WRAP AROUND
-!!                        tmp_u_phi = ((phi_u2d(jh,ji,jj)*ssumask(ji,jj)) + (phi_u2d(jh,ji-1,jj)*ssumask(ji-1,jj)))/(ssumask(ji,jj) + ssumask(ji-1,jj))
-!!                        tmp_v_phi = ((phi_v2d(jh,ji,jj)*ssvmask(ji,jj)) + (phi_v2d(jh,ji,jj-1)*ssvmask(ji,jj-1)))/(ssvmask(ji,jj) + ssvmask(ji,jj-1))
 
-!             do jj=1,nlcj
-!                do ji=1,nlci
 
-!!                        tmp_u_amp = ((amp_u2d(jh,ji,jj)) + (amp_u2d(jh,ji-1,jj)))/(2.)
-!!                        tmp_v_amp = ((amp_v2d(jh,ji,jj)) + (amp_v2d(jh,ji,jj-1)))/(2.)
-!!                        ! WORK ON THE WRAP AROUND
-!!                        tmp_u_phi = ((phi_u2d(jh,ji,jj)) + (phi_u2d(jh,ji-1,jj)))/(2.)
-!!                        tmp_v_phi = ((phi_v2d(jh,ji,jj)) + (phi_v2d(jh,ji,jj-1)))/(2.)
 
 
 
-!                        tmp_u_amp = (amp_u2d(jh,ji,jj)) 
-!                        tmp_v_amp = (amp_v2d(jh,ji,jj)) 
-!                        ! WORK ON THE WRAP AROUND
-!                        tmp_u_phi = (phi_u2d(jh,ji,jj)) 
-!                        tmp_v_phi = (phi_v2d(jh,ji,jj)) 
+      IF (ln_diaharm_postproc_vel )  THEN
+          IF ( ln_ana_uvbar)  THEN
+             IF(lwp) WRITE(numout,*) "diaharm_fast: Postprocess barotropic velocity tidal parameters"
+             CALL FLUSH(numout)
+             DO jh=1,nb_ana
 
 
+                tmp_u_amp_2d_mat(:,:) = 0.
+                tmp_v_amp_2d_mat(:,:) = 0.
+                tmp_u_phi_2d_mat(:,:) = 0.
+                tmp_v_phi_2d_mat(:,:) = 0.
 
-!!                        a_u = tmp_U_amp * cos(tmp_U_phi)
-!!                        b_u = tmp_U_amp * sin(tmp_U_phi)
-!!                        a_v = tmp_V_amp * cos(tmp_V_phi)
-!!                        b_v = tmp_V_amp * sin(tmp_V_phi)
+                a_u_2d_mat(:,:) = 0.
+                b_u_2d_mat(:,:) = 0.
+                a_v_2d_mat(:,:) = 0.
+                b_v_2d_mat(:,:) = 0.
 
-!!                        twodelta =  atan2( (tmp_V_amp**2  * sin( 2*(tmp_U_phi - tmp_V_phi)  ) ) , (   tmp_U_amp**2   +   tmp_V_amp**2  * cos( 2*(tmp_U_phi - tmp_V_phi)  )     ) )
-!!                        delta = twodelta/2.
+                qmax_2d_mat(:,:) = 0.
+                qmin_2d_mat(:,:) = 0.
 
-!!                        !alpha2 = sqrt( tmp_U_amp**4 + tmp_V_amp**4 + 2*tmp_U_amp**2*tmp_V_amp**2*cos(2*(tmp_U_phi - tmp_V_phi))  )
+                ecc_2d_mat(:,:) = 0.
+                thetamax_2d_mat(:,:) =0.
+                thetamin_2d_mat(:,:) = 0.
 
-!!                        tmpreal = tmp_U_amp**4 + tmp_V_amp**4 + 2*tmp_U_amp**2*tmp_V_amp**2*cos(2*(tmp_U_phi - tmp_V_phi)) 
-!!                        if (tmpreal < 0) CYCLE
-!!                        alpha2 = sqrt( tmp_U_amp**4 + tmp_V_amp**4 + 2*tmp_U_amp**2*tmp_V_amp**2*cos(2*(tmp_U_phi - tmp_V_phi))  )
-!!                        if (alpha2 < 0) CYCLE
-!!                        alpha= sqrt( alpha2 )
+                Qc_2d_mat(:,:) = 0.
+                Qac_2d_mat(:,:) = 0.
+                gc_2d_mat(:,:) = 0.
+                gac_2d_mat(:,:) = 0.
 
+                Phi_Ua_2d_mat(:,:) = 0.
+                dir_Ua_2d_mat(:,:) = 0.
+                polarity_2d_mat(:,:) = 0.
 
-!!                        !major and minor axis of the ellipse
-!!                        !qmax = sqrt( (tmp_U_amp**2 + tmp_V_amp**2 + alpha**2)/2 )
-!!                        !tmpreal =  (tmp_U_amp**2 + tmp_V_amp**2 - alpha**2)/2
-!!                        !qmin = 0
-!!                        !if (tmpreal > 0) qmin = sqrt( (tmp_U_amp**2 + tmp_V_amp**2 - alpha**2)/2 )   ! but always positive.
 
-!!                        tmpreal =  (tmp_U_amp**2 + tmp_V_amp**2 - alpha**2)/2
-!!                        if (tmpreal < 0) CYCLE
-!!                        qmin = sqrt( (tmp_U_amp**2 + tmp_V_amp**2 - alpha**2)/2 )   ! but always positive.
+                 DO jj = 2, nlcj !- 1
+                    DO ji = 2, nlci ! - 1
 
-!!                        !eccentricity of ellipse
-!!                        ecc = (qmax - qmin)/(qmax + qmin)
-!!                        ! Angle of major and minor ellipse
-!!                        thetamax = atan2((  tmp_V_amp * cos((tmp_U_phi - tmp_V_phi) - delta)   ) , ( tmp_U_amp * cos( delta) )  )
-!!                        thetamin = thetamax + rpi/2.
-
-
+    !             do jj=2,nlcj
+    !                do ji=2,nlci
+                        !IF ((ssumask(ji,jj) + ssumask(ji-1,jj)) == 0 ) CYCLE
+                        !IF ((ssvmask(ji,jj) + ssvmask(ji,jj-1)) == 0 ) CYCLE
 
-!!                        ! Rotary current components: Pugh A3.10
-!!                        ! Clockwise (c) and anticlockwise (ac) rotating rotate_wind_vectors
-!!                        ! so   Qc = clockwise     = anticyclonic = negative
-!!                        ! and Qac = anticlockwise = cyclonic     = negative
-
-!!                        tmpreal = tmp_U_amp**2 + tmp_V_amp**2 - (2*tmp_U_amp*tmp_V_amp*sin( tmp_V_phi - tmp_U_phi))
-!!                        if (tmpreal < 0) CYCLE
-!!                        Qc  = 0.5*sqrt( tmp_U_amp**2 + tmp_V_amp**2 - (2*tmp_U_amp*tmp_V_amp*sin( tmp_V_phi - tmp_U_phi))  )
-
-!!                        tmpreal = tmp_U_amp**2 + tmp_V_amp**2 + (2*tmp_U_amp*tmp_V_amp*sin( tmp_V_phi - tmp_U_phi)) 
-!!                        if (tmpreal < 0) CYCLE
-!!                        Qac = 0.5*sqrt( tmp_U_amp**2 + tmp_V_amp**2 + (2*tmp_U_amp*tmp_V_amp*sin( tmp_V_phi - tmp_U_phi))  )
-
-
-!!                        gc  = atan2(  (  (  tmp_U_amp*sin( tmp_U_phi ) ) +  (tmp_V_amp*cos( tmp_V_phi)  ) )  ,  (  (tmp_U_amp*cos( tmp_U_phi ))  -  (tmp_V_amp*sin( tmp_V_phi ))  )  )
-!!                        gac = atan2(  (  ( -tmp_U_amp*sin( tmp_U_phi ) ) +  (tmp_V_amp*cos( tmp_V_phi)  ) )  ,  (  (tmp_U_amp*cos( tmp_U_phi ))  +  (tmp_V_amp*sin( tmp_V_phi ))  )  )
-
-!!                        !Pugh A3.2
-!!                        Phi_Ua = -0.5*(gac - gc)
-!!                        dir_Ua = 0.5*(gac + gc)  ! positive from x axis
-!!                        polarity = (Qac - Qc)/qmax
-
-
-
-!                        tmp_u_amp_mat(ji,jj) = tmp_u_amp
-!                        tmp_v_amp_mat(ji,jj) = tmp_v_amp
-!                        tmp_u_phi_mat(ji,jj) = tmp_u_phi
-!                        tmp_v_phi_mat(ji,jj) = tmp_v_phi
-
-
-!!                        a_u_mat(ji,jj) = a_u
-!!                        b_u_mat(ji,jj) = b_u
-!!                        a_v_mat(ji,jj) = a_v
-!!                        b_v_mat(ji,jj) = b_v
-
-!!                        qmax_mat(ji,jj) = qmax
-!!                        qmin_mat(ji,jj) = qmin
-
-!!                        ecc_mat(ji,jj) = ecc
-!!                        thetamax_mat(ji,jj) = thetamax
-!!                        thetamin_mat(ji,jj) = thetamin
-
-!!                        Qc_mat(ji,jj) = Qc
-!!                        Qac_mat(ji,jj) = Qac
-!!                        gc_mat(ji,jj) = gc
-!!                        gac_mat(ji,jj) = gac
-
-!!                        Phi_Ua_mat(ji,jj) = Phi_Ua
-!!                        dir_Ua_mat(ji,jj) = dir_Ua
-!!                        polarity_mat(ji,jj) = polarity
-
-!!                    ENDIF
-!                END DO
-!             END DO
-
-
-!!            tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_u_amp_t_uvbar'
-!!            IF( iom_use(TRIM(tmp_name)) ) THEN
-!!               IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
-!!               CALL iom_put( TRIM(tmp_name), tmp_u_amp_mat(:,:))
-!!            ENDIF
-!!            tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_v_amp_t_uvbar'
-!!            IF( iom_use(TRIM(tmp_name)) ) THEN
-!!              IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
-!!              CALL iom_put( TRIM(tmp_name), tmp_v_amp_mat(:,:))
-!!            ENDIF
-!!            tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_u_phi_t_uvbar'
-!!            IF( iom_use(TRIM(tmp_name)) ) THEN
-!!              IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
-!!              CALL iom_put( TRIM(tmp_name), tmp_u_phi_mat(:,:))
-!!            ENDIF
-!!            tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_v_phi_t_uvbar'
-!!            IF( iom_use(TRIM(tmp_name)) ) THEN
-!!              IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
-!!              CALL iom_put( TRIM(tmp_name), tmp_v_phi_mat(:,:))
-!!            ENDIF
-
-
-
-!!            tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_a_u_uvbar'
-!!            IF( iom_use(TRIM(tmp_name)) ) THEN
-!!               IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
-!!               CALL iom_put( TRIM(tmp_name), a_u_mat(:,:))
-!!            ENDIF
-!!            tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_a_v_uvbar'
-!!            IF( iom_use(TRIM(tmp_name)) ) THEN
-!!              IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
-!!              CALL iom_put( TRIM(tmp_name), a_v_mat(:,:))
-!!            ENDIF
-!!            tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_b_u_uvbar'
-!!            IF( iom_use(TRIM(tmp_name)) ) THEN
-!!              IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
-!!              CALL iom_put( TRIM(tmp_name), b_u_mat(:,:))
-!!            ENDIF
-!!            tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_b_v_uvbar'
-!!            IF( iom_use(TRIM(tmp_name)) ) THEN
-!!              IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
-!!              CALL iom_put( TRIM(tmp_name), b_v_mat(:,:))
-!!            ENDIF
-
-!!            tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_qmax_uvbar'
-!!            IF( iom_use(TRIM(tmp_name)) ) THEN
-!!              IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
-!!              CALL iom_put( TRIM(tmp_name), qmax_mat(:,:))
-!!            ENDIF
-!!            tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_qmin_uvbar'
-!!            IF( iom_use(TRIM(tmp_name)) ) THEN
-!!              IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
-!!              CALL iom_put( TRIM(tmp_name), qmin_mat(:,:))
-!!            ENDIF
-
-!!            tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_ecc_uvbar'
-!!            IF( iom_use(TRIM(tmp_name)) ) THEN
-!!              IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
-!!              CALL iom_put( TRIM(tmp_name), ecc_mat(:,:))
-!!            ENDIF
-!!            tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_thetamax_uvbar'
-!!            IF( iom_use(TRIM(tmp_name)) ) THEN
-!!              IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
-!!              CALL iom_put( TRIM(tmp_name), thetamax_mat(:,:))
-!!            ENDIF
-!!            tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_thetamin_uvbar'
-!!            IF( iom_use(TRIM(tmp_name)) ) THEN
-!!              IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
-!!              CALL iom_put( TRIM(tmp_name), thetamin_mat(:,:))
-!!            ENDIF
-
-!!            tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_Qc_uvbar'
-!!            IF( iom_use(TRIM(tmp_name)) ) THEN
-!!              IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
-!!              CALL iom_put( TRIM(tmp_name), Qc_mat(:,:))
-!!            ENDIF
-!!            tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_Qac_uvbar'
-!!            IF( iom_use(TRIM(tmp_name)) ) THEN
-!!              IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
-!!              CALL iom_put( TRIM(tmp_name), Qac_mat(:,:))
-!!            ENDIF
-!!            tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_gc_uvbar'
-!!            IF( iom_use(TRIM(tmp_name)) ) THEN
-!!              IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
-!!              CALL iom_put( TRIM(tmp_name), gc_mat(:,:))
-!!            ENDIF
-!!            tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_gac_uvbar'
-!!            IF( iom_use(TRIM(tmp_name)) ) THEN
-!!              IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
-!!              CALL iom_put( TRIM(tmp_name), gac_mat(:,:))
-!!            ENDIF
-
-
-!!            tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_Phi_Ua_uvbar'
-!!            IF( iom_use(TRIM(tmp_name)) ) THEN
-!!              IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
-!!              CALL iom_put( TRIM(tmp_name), Phi_Ua_mat(:,:))
-!!            ENDIF
-!!            tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_dir_Ua_uvbar'
-!!            IF( iom_use(TRIM(tmp_name)) ) THEN
-!!              IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
-!!              CALL iom_put( TRIM(tmp_name), dir_Ua_mat(:,:))
-!!            ENDIF
-!!            tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_polarity_uvbar'
-!!            IF( iom_use(TRIM(tmp_name)) ) THEN
-!!              IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name)
-!!              CALL iom_put( TRIM(tmp_name), polarity_mat(:,:))
-!!            ENDIF
-
-!            tmp_u_amp_mat(:,:) = 0.
-!            tmp_v_amp_mat(:,:) = 0.
-!            tmp_u_phi_mat(:,:) = 0.
-!            tmp_v_phi_mat(:,:) = 0.
-
-!!            a_u_mat(:,:) = 0.
-!!            b_u_mat(:,:) = 0.
-!!            a_v_mat(:,:) = 0.
-!!            b_v_mat(:,:) = 0.
-
-!!            qmax_mat(:,:) = 0.
-!!            qmin_mat(:,:) = 0.
-
-!!            ecc_mat(:,:) = 0
-!!            thetamax_mat(:,:) =0.
-!!            thetamin_mat(:,:) = 0.
-
-!!            Qc_mat(:,:) = 0.
-!!            Qac_mat(:,:) = 0.
-!!            gc_mat(:,:) = 0.
-!!            gac_mat(:,:) = 0.
-
-!!            Phi_Ua_mat(:,:) = 0.
-!!            dir_Ua_mat(:,:) = 0.
-!!            polarity_mat(:,:) = 0.
-
-
-!         END DO
-!         IF(lwp) WRITE(numout,*) "diaharm_fast: Finshed postprocessing 2d velocity tidal parameters"
-!      ENDIF
-
-!     CALL FLUSH(numout)
-
-!      IF (ln_diaharm_postproc_vel .AND. ln_ana_uv3d)  THEN
-!           IF(lwp) WRITE(numout,*) "diaharm_fast: Postprocess 3d velocity tidal parameters"
-!      ENDIF
-
-
-!     CALL FLUSH(numout)
+                        IF ( ((ssumask(ji,jj) + ssumask(ji-1,jj)) > 0 ) .AND. ((ssvmask(ji,jj) + ssvmask(ji,jj-1)) > 0 ) ) THEN
+                            tmp_u_amp = ((amp_u2d(jh,ji,jj)*ssumask(ji,jj)) + (amp_u2d(jh,ji-1,jj)*ssumask(ji-1,jj)))/(ssumask(ji,jj) + ssumask(ji-1,jj))
+                            tmp_v_amp = ((amp_v2d(jh,ji,jj)*ssvmask(ji,jj)) + (amp_v2d(jh,ji,jj-1)*ssvmask(ji,jj-1)))/(ssvmask(ji,jj) + ssvmask(ji,jj-1))
+                            ! WORK ON THE WRAP AROUND
+                            !tmp_u_phi = ((phi_u2d(jh,ji,jj)*ssumask(ji,jj)) + (phi_u2d(jh,ji-1,jj)*ssumask(ji-1,jj)))/(ssumask(ji,jj) + ssumask(ji-1,jj))
+                            !tmp_v_phi = ((phi_v2d(jh,ji,jj)*ssvmask(ji,jj)) + (phi_v2d(jh,ji,jj-1)*ssvmask(ji,jj-1)))/(ssvmask(ji,jj) + ssvmask(ji,jj-1))
+
+                            if ( (ssumask(ji,jj) == 1) .AND. (ssumask(ji-1,jj) == 1)) then
+                              !tmp_u_phi = ((phi_u2d(jh,ji,jj)*ssumask(ji,jj)) + (phi_u2d(jh,ji-1,jj)*ssumask(ji-1,jj)))/(ssumask(ji,jj) + ssumask(ji-1,jj))
+                              tmp_u_phi = atan2((sin(phi_u2d(jh,ji,jj)) + sin(phi_u2d(jh,ji-1,jj))),(cos(phi_u2d(jh,ji,jj)) + cos(phi_u2d(jh,ji-1,jj))))
+                            else if ( (ssumask(ji,jj) == 1) .AND. (ssumask(ji-1,jj) == 0)) then
+                              tmp_u_phi = (phi_u2d(jh,ji,jj)*ssumask(ji,jj))
+                            else if ( (ssumask(ji,jj) == 0) .AND. (ssumask(ji-1,jj) == 1)) then
+                              tmp_u_phi = (phi_u2d(jh,ji-1,jj)*ssumask(ji-1,jj))
+                            else 
+                              cycle
+                            end if
+
+
+                            if ( (ssvmask(ji,jj) == 1) .AND. (ssvmask(ji,jj-1) == 1)) then
+                              !tmp_v_phi = ((phi_v2d(jh,ji,jj)*ssvmask(ji,jj)) + (phi_v2d(jh,ji,jj-1)*ssvmask(ji,jj-1)))/(ssvmask(ji,jj) + ssvmask(ji,jj-1))
+                              tmp_v_phi = atan2((sin(phi_v2d(jh,ji,jj)) + sin(phi_v2d(jh,ji,jj-1))),(cos(phi_v2d(jh,ji,jj)) + cos(phi_v2d(jh,ji,jj-1))))
+                            else if ( (ssvmask(ji,jj) == 1) .AND. (ssvmask(ji,jj-1) == 0)) then
+                              tmp_v_phi = (phi_v2d(jh,ji,jj)*ssvmask(ji,jj))
+                            else if ( (ssvmask(ji,jj) == 0) .AND. (ssvmask(ji,jj-1) == 1)) then
+                              tmp_v_phi = (phi_v2d(ji,jj-1)*ssvmask(ji,jj-1))
+                            else 
+                              cycle
+                            end if
+
+
+    !             do jj=1,nlcj
+    !                do ji=1,nlci
+
+    !                        tmp_u_amp = ((amp_u2d(jh,ji,jj)) + (amp_u2d(jh,ji-1,jj)))/(2.)
+    !                        tmp_v_amp = ((amp_v2d(jh,ji,jj)) + (amp_v2d(jh,ji,jj-1)))/(2.)
+    !                        ! WORK ON THE WRAP AROUND
+    !                        tmp_u_phi = ((phi_u2d(jh,ji,jj)) + (phi_u2d(jh,ji-1,jj)))/(2.)
+    !                        tmp_v_phi = ((phi_v2d(jh,ji,jj)) + (phi_v2d(jh,ji,jj-1)))/(2.)
+
+
+
+    !                        tmp_u_amp = (amp_u2d(jh,ji,jj)) 
+    !                        tmp_v_amp = (amp_v2d(jh,ji,jj)) 
+    !                        ! WORK ON THE WRAP AROUND
+    !                        tmp_u_phi = (phi_u2d(jh,ji,jj)) 
+    !                        tmp_v_phi = (phi_v2d(jh,ji,jj)) 
+
+
+
+!                            a_u = tmp_U_amp * cos(tmp_U_phi)
+!                            b_u = tmp_U_amp * sin(tmp_U_phi)
+!                            a_v = tmp_V_amp * cos(tmp_V_phi)
+!                            b_v = tmp_V_amp * sin(tmp_V_phi)
+
+!                            twodelta =  atan2( (tmp_V_amp**2  * sin( 2*(tmp_U_phi - tmp_V_phi)  ) ) , (   tmp_U_amp**2   +   tmp_V_amp**2  * cos( 2*(tmp_U_phi - tmp_V_phi)  )     ) )
+!                            delta = twodelta/2.
+
+!                            !alpha2 = sqrt( tmp_U_amp**4 + tmp_V_amp**4 + 2*tmp_U_amp**2*tmp_V_amp**2*cos(2*(tmp_U_phi - tmp_V_phi))  )
+
+!                            tmpreal = tmp_U_amp**4 + tmp_V_amp**4 + 2*tmp_U_amp**2*tmp_V_amp**2*cos(2*(tmp_U_phi - tmp_V_phi)) 
+!                            if (tmpreal < 0) CYCLE
+!                            alpha2 = sqrt( tmp_U_amp**4 + tmp_V_amp**4 + 2*tmp_U_amp**2*tmp_V_amp**2*cos(2*(tmp_U_phi - tmp_V_phi))  )
+!                            if (alpha2 < 0) CYCLE
+!                            alpha= sqrt( alpha2 )
+
+
+!                            !major and minor axis of the ellipse
+!                            qmax = sqrt( (tmp_U_amp**2 + tmp_V_amp**2 + alpha**2)/2 )
+!                            !tmpreal =  (tmp_U_amp**2 + tmp_V_amp**2 - alpha**2)/2
+!                            !qmin = 0
+!                            !if (tmpreal > 0) qmin = sqrt( (tmp_U_amp**2 + tmp_V_amp**2 - alpha**2)/2 )   ! but always positive.
+
+!                            tmpreal =  (tmp_U_amp**2 + tmp_V_amp**2 - alpha**2)/2
+!                            if (tmpreal < 0) CYCLE
+!                            qmin = sqrt( (tmp_U_amp**2 + tmp_V_amp**2 - alpha**2)/2 )   ! but always positive.
+
+!                            !eccentricity of ellipse
+!                            tmpreal =  (qmax + qmin)
+!                            if (tmpreal < 0) CYCLE
+!                            ecc = (qmax - qmin)/(qmax + qmin)
+!                            ! Angle of major and minor ellipse
+!                            thetamax = atan2((  tmp_V_amp * cos((tmp_U_phi - tmp_V_phi) - delta)   ) , ( tmp_U_amp * cos( delta) )  )
+!                            thetamin = thetamax + rpi/2.
+
+
+
+!                            ! Rotary current components: Pugh A3.10
+!                            ! Clockwise (c) and anticlockwise (ac) rotating rotate_wind_vectors
+!                            ! so   Qc = clockwise     = anticyclonic = negative
+!                            ! and Qac = anticlockwise = cyclonic     = negative
+
+!                            tmpreal = tmp_U_amp**2 + tmp_V_amp**2 - (2*tmp_U_amp*tmp_V_amp*sin( tmp_V_phi - tmp_U_phi))
+!                            if (tmpreal < 0) CYCLE
+!                            Qc  = 0.5*sqrt( tmp_U_amp**2 + tmp_V_amp**2 - (2*tmp_U_amp*tmp_V_amp*sin( tmp_V_phi - tmp_U_phi))  )
+
+!                            tmpreal = tmp_U_amp**2 + tmp_V_amp**2 + (2*tmp_U_amp*tmp_V_amp*sin( tmp_V_phi - tmp_U_phi)) 
+!                            if (tmpreal < 0) CYCLE
+!                            Qac = 0.5*sqrt( tmp_U_amp**2 + tmp_V_amp**2 + (2*tmp_U_amp*tmp_V_amp*sin( tmp_V_phi - tmp_U_phi))  )
+
+
+!                            gc  = atan2(  (  (  tmp_U_amp*sin( tmp_U_phi ) ) +  (tmp_V_amp*cos( tmp_V_phi)  ) )  ,  (  (tmp_U_amp*cos( tmp_U_phi ))  -  (tmp_V_amp*sin( tmp_V_phi ))  )  )
+!                            gac = atan2(  (  ( -tmp_U_amp*sin( tmp_U_phi ) ) +  (tmp_V_amp*cos( tmp_V_phi)  ) )  ,  (  (tmp_U_amp*cos( tmp_U_phi ))  +  (tmp_V_amp*sin( tmp_V_phi ))  )  )
+
+!                            !Pugh A3.2
+!                            Phi_Ua = -0.5*(gac - gc)
+!                            dir_Ua = 0.5*(gac + gc)  ! positive from x axis
+
+!                            tmpreal = qmax
+!                            if (tmpreal < 0) CYCLE
+!                            polarity = (Qac - Qc)/qmax
+
+                            a_u = tmp_U_amp * cos(tmp_U_phi)
+                            b_u = tmp_U_amp * sin(tmp_U_phi)
+                            a_v = tmp_V_amp * cos(tmp_V_phi)
+                            b_v = tmp_V_amp * sin(tmp_V_phi)
+
+                            twodelta =  atan2( (tmp_V_amp**2  * sin( 2*(tmp_U_phi - tmp_V_phi)  ) ) , (   tmp_U_amp**2   +   tmp_V_amp**2  * cos( 2*(tmp_U_phi - tmp_V_phi)  )     ) )
+                            delta = twodelta/2.
+
+                            !alpha2 = sqrt( tmp_U_amp**4 + tmp_V_amp**4 + 2*tmp_U_amp**2*tmp_V_amp**2*cos(2*(tmp_U_phi - tmp_V_phi))  )
+
+                            tmpreal = tmp_U_amp**4 + tmp_V_amp**4 + 2*tmp_U_amp**2*tmp_V_amp**2*cos(2*(tmp_U_phi - tmp_V_phi)) 
+                            if (tmpreal < 0) tmpreal = 0 !CYCLE
+                            !alpha2 = sqrt( tmp_U_amp**4 + tmp_V_amp**4 + 2*tmp_U_amp**2*tmp_V_amp**2*cos(2*(tmp_U_phi - tmp_V_phi))  )
+                            alpha2 = sqrt( tmpreal )
+                            if (alpha2 < 0) alpha2 = 0 !CYCLE
+                            alpha= sqrt( alpha2 )
+
+
+                            !major and minor axis of the ellipse
+                            qmax = sqrt( (tmp_U_amp**2 + tmp_V_amp**2 + alpha**2)/2 )
+                            !tmpreal =  (tmp_U_amp**2 + tmp_V_amp**2 - alpha**2)/2
+                            !qmin = 0
+                            !if (tmpreal > 0) qmin = sqrt( (tmp_U_amp**2 + tmp_V_amp**2 - alpha**2)/2 )   ! but always positive.
+
+                            tmpreal =  (tmp_U_amp**2 + tmp_V_amp**2 - alpha**2)/2
+                            if (tmpreal < 0) tmpreal = 0 !CYCLE
+                            !qmin = sqrt( (tmp_U_amp**2 + tmp_V_amp**2 - alpha**2)/2 )   ! but always positive.
+                            qmin = sqrt( tmpreal )   ! but always positive.
+
+                            !eccentricity of ellipse
+
+                            tmpreal =  (qmax + qmin)
+                            if (tmpreal == 0) tmpreal = tmpreal + 0.0000001! CYCLE
+                            !ecc = (qmax - qmin)/(qmax + qmin)
+                            ecc = (qmax - qmin)/(tmpreal)
+                            ! Angle of major and minor ellipse
+                            thetamax = atan2((  tmp_V_amp * cos((tmp_U_phi - tmp_V_phi) - delta)   ) , ( tmp_U_amp * cos( delta) )  )
+                            thetamin = thetamax + rpi/2.
+
+
+
+                            ! Rotary current components: Pugh A3.10
+                            ! Clockwise (c) and anticlockwise (ac) rotating rotate_wind_vectors
+                            ! so   Qc = clockwise     = anticyclonic = negative
+                            ! and Qac = anticlockwise = cyclonic     = negative
+
+                            tmpreal = tmp_U_amp**2 + tmp_V_amp**2 - (2*tmp_U_amp*tmp_V_amp*sin( tmp_V_phi - tmp_U_phi))
+                            if (tmpreal < 0) tmpreal = 0! CYCLE
+                            !Qc  = 0.5*sqrt( tmp_U_amp**2 + tmp_V_amp**2 - (2*tmp_U_amp*tmp_V_amp*sin( tmp_V_phi - tmp_U_phi))  )
+                            Qc  = 0.5*sqrt( tmpreal )
+
+                            tmpreal = tmp_U_amp**2 + tmp_V_amp**2 + (2*tmp_U_amp*tmp_V_amp*sin( tmp_V_phi - tmp_U_phi)) 
+                            if (tmpreal < 0) tmpreal = 0! CYCLE
+                            !Qac = 0.5*sqrt( tmp_U_amp**2 + tmp_V_amp**2 + (2*tmp_U_amp*tmp_V_amp*sin( tmp_V_phi - tmp_U_phi))  )
+                            Qac = 0.5*sqrt( tmpreal )
+
+
+                            gc  = atan2(  (  (  tmp_U_amp*sin( tmp_U_phi ) ) +  (tmp_V_amp*cos( tmp_V_phi)  ) )  ,  (  (tmp_U_amp*cos( tmp_U_phi ))  -  (tmp_V_amp*sin( tmp_V_phi ))  )  )
+                            gac = atan2(  (  ( -tmp_U_amp*sin( tmp_U_phi ) ) +  (tmp_V_amp*cos( tmp_V_phi)  ) )  ,  (  (tmp_U_amp*cos( tmp_U_phi ))  +  (tmp_V_amp*sin( tmp_V_phi ))  )  )
+
+                            !Pugh A3.2
+                            Phi_Ua = -0.5*(gac - gc)
+                            dir_Ua = 0.5*(gac + gc)  ! positive from x axis
+
+                            tmpreal = qmax
+                            !if (tmpreal == 0) tmpreal = tmpreal + 0.0000001 !CYCLE
+                            if (tmpreal == 0) then 
+                                polarity = 0
+                            else
+                                polarity = (Qac - Qc)/qmax
+                            endif
+
+
+                            tmp_u_amp_2d_mat(ji,jj) = tmp_u_amp
+                            tmp_v_amp_2d_mat(ji,jj) = tmp_v_amp
+                            tmp_u_phi_2d_mat(ji,jj) = tmp_u_phi
+                            tmp_v_phi_2d_mat(ji,jj) = tmp_v_phi
+
+
+                            a_u_2d_mat(ji,jj) = a_u
+                            b_u_2d_mat(ji,jj) = b_u
+                            a_v_2d_mat(ji,jj) = a_v
+                            b_v_2d_mat(ji,jj) = b_v
+
+                            qmax_2d_mat(ji,jj) = qmax
+                            qmin_2d_mat(ji,jj) = qmin
+
+                            ecc_2d_mat(ji,jj) = ecc
+                            thetamax_2d_mat(ji,jj) = thetamax
+                            thetamin_2d_mat(ji,jj) = thetamin
+
+                            Qc_2d_mat(ji,jj) = Qc
+                            Qac_2d_mat(ji,jj) = Qac
+                            gc_2d_mat(ji,jj) = gc
+                            gac_2d_mat(ji,jj) = gac
+
+                            Phi_Ua_2d_mat(ji,jj) = Phi_Ua
+                            dir_Ua_2d_mat(ji,jj) = dir_Ua
+                            polarity_2d_mat(ji,jj) = polarity
+
+                        ENDIF
+                    END DO
+                 END DO
+
+
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_u_amp_t_uvbar'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                   IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                   CALL iom_put( TRIM(tmp_name), tmp_u_amp_2d_mat(:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_v_amp_t_uvbar'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), tmp_v_amp_2d_mat(:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_u_phi_t_uvbar'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), tmp_u_phi_2d_mat(:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_v_phi_t_uvbar'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), tmp_v_phi_2d_mat(:,:))
+                ENDIF
+
+
+
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_a_u_uvbar'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                   IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                   CALL iom_put( TRIM(tmp_name), a_u_2d_mat(:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_a_v_uvbar'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), a_v_2d_mat(:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_b_u_uvbar'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), b_u_2d_mat(:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_b_v_uvbar'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), b_v_2d_mat(:,:))
+                ENDIF
+
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_qmax_uvbar'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), qmax_2d_mat(:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_qmin_uvbar'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), qmin_2d_mat(:,:))
+                ENDIF
+
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_ecc_uvbar'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), ecc_2d_mat(:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_thetamax_uvbar'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), thetamax_2d_mat(:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_thetamin_uvbar'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), thetamin_2d_mat(:,:))
+                ENDIF
+
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_Qc_uvbar'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), Qc_2d_mat(:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_Qac_uvbar'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), Qac_2d_mat(:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_gc_uvbar'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), gc_2d_mat(:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_gac_uvbar'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), gac_2d_mat(:,:))
+                ENDIF
+
+
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_Phi_Ua_uvbar'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), Phi_Ua_2d_mat(:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_dir_Ua_uvbar'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), dir_Ua_2d_mat(:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_polarity_uvbar'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), polarity_2d_mat(:,:))
+                ENDIF
+
+                tmp_u_amp_2d_mat(:,:) = 0.
+                tmp_v_amp_2d_mat(:,:) = 0.
+                tmp_u_phi_2d_mat(:,:) = 0.
+                tmp_v_phi_2d_mat(:,:) = 0.
+
+                a_u_2d_mat(:,:) = 0.
+                b_u_2d_mat(:,:) = 0.
+                a_v_2d_mat(:,:) = 0.
+                b_v_2d_mat(:,:) = 0.
+
+                qmax_2d_mat(:,:) = 0.
+                qmin_2d_mat(:,:) = 0.
+
+                ecc_2d_mat(:,:) = 0.
+                thetamax_2d_mat(:,:) =0.
+                thetamin_2d_mat(:,:) = 0.
+
+                Qc_2d_mat(:,:) = 0.
+                Qac_2d_mat(:,:) = 0.
+                gc_2d_mat(:,:) = 0.
+                gac_2d_mat(:,:) = 0.
+
+                Phi_Ua_2d_mat(:,:) = 0.
+                dir_Ua_2d_mat(:,:) = 0.
+                polarity_2d_mat(:,:) = 0.
+
+
+             END DO
+             IF(lwp) WRITE(numout,*) "diaharm_fast: Finshed postprocessing 2d velocity tidal parameters"
+          ENDIF
+
+          CALL FLUSH(numout)
+
+          IF (ln_ana_uv3d)  THEN
+             IF(lwp) WRITE(numout,*) "diaharm_fast: Postprocess baroclinic velocity tidal parameters"
+             CALL FLUSH(numout)
+             DO jh=1,nb_ana
+
+
+                tmp_u_amp_3d_mat(:,:,:) = 0.
+                tmp_v_amp_3d_mat(:,:,:) = 0.
+                tmp_u_phi_3d_mat(:,:,:) = 0.
+                tmp_v_phi_3d_mat(:,:,:) = 0.
+
+                a_u_3d_mat(:,:,:) = 0.
+                b_u_3d_mat(:,:,:) = 0.
+                a_v_3d_mat(:,:,:) = 0.
+                b_v_3d_mat(:,:,:) = 0.
+
+                qmax_3d_mat(:,:,:) = 0.
+                qmin_3d_mat(:,:,:) = 0.
+
+                ecc_3d_mat(:,:,:) = 0.
+                thetamax_3d_mat(:,:,:) =0.
+                thetamin_3d_mat(:,:,:) = 0.
+
+                Qc_3d_mat(:,:,:) = 0.
+                Qac_3d_mat(:,:,:) = 0.
+                gc_3d_mat(:,:,:) = 0.
+                gac_3d_mat(:,:,:) = 0.
+
+                Phi_Ua_3d_mat(:,:,:) = 0.
+                dir_Ua_3d_mat(:,:,:) = 0.
+                polarity_3d_mat(:,:,:) = 0.
+
+
+                  DO jk=1,jpkm1
+                     !DO jj = 2, nlcj ! - 1
+                     !   DO ji = 2, nlci ! - 1
+
+                     DO jj = 2, jpjm1
+                        DO ji = 2, jpim1
+
+        !             do jj=2,nlcj
+        !                do ji=2,nlci
+                            !IF ((umask(ji,jj) + umask(ji-1,jj)) == 0 ) CYCLE
+                            !IF ((vmask(ji,jj) + vmask(ji,jj-1)) == 0 ) CYCLE
+
+                            IF ( ((umask(ji,jj,jk) + umask(ji-1,jj,jk)) > 0 ) .AND. ((vmask(ji,jj,jk) + vmask(ji,jj-1,jk)) > 0 ) ) THEN
+                                tmp_u_amp = ((amp_u3d(jh,ji,jj,jk)*umask(ji,jj,jk)) + (amp_u3d(jh,ji-1,jj,jk)*umask(ji-1,jj,jk)))/(umask(ji,jj,jk) + umask(ji-1,jj,jk))
+                                tmp_v_amp = ((amp_v3d(jh,ji,jj,jk)*vmask(ji,jj,jk)) + (amp_v3d(jh,ji,jj-1,jk)*vmask(ji,jj-1,jk)))/(vmask(ji,jj,jk) + vmask(ji,jj-1,jk))
+                                ! WORK ON THE WRAP AROUND
+                                !tmp_u_phi = ((phi_u3d(jh,ji,jj,jk)*umask(ji,jj,jk)) + (phi_u3d(jh,ji-1,jj,jk)*umask(ji-1,jj,jk)))/(umask(ji,jj,jk) + umask(ji-1,jj,jk))
+                                !tmp_v_phi = ((phi_v3d(jh,ji,jj,jk)*vmask(ji,jj,jk)) + (phi_v3d(jh,ji,jj-1,jk)*vmask(ji,jj-1,jk)))/(vmask(ji,jj,jk) + vmask(ji,jj-1,jk))
+
+                                if ( (umask(ji,jj,jk) == 1) .AND. (umask(ji-1,jj,jk) == 1)) then
+                                  !tmp_u_phi = ((phi_u3d(jh,ji,jj,jk)*umask(ji,jj,jk)) + (phi_u3d(jh,ji-1,jj,jk)*umask(ji-1,jj,jk)))/(umask(ji,jj,jk) + umask(ji-1,jj,jk))
+                                  tmp_u_phi = atan2((sin(phi_u3d(jh,ji,jj,jk)) + sin(phi_u3d(jh,ji-1,jj,jk))),(cos(phi_u3d(jh,ji,jj,jk)) + cos(phi_u3d(jh,ji-1,jj,jk))))
+                                else if ( (umask(ji,jj,jk) == 1) .AND. (umask(ji-1,jj,jk) == 0)) then
+                                  tmp_u_phi = (phi_u3d(jh,ji,jj,jk)*umask(ji,jj,jk))
+                                else if ( (umask(ji,jj,jk) == 0) .AND. (umask(ji-1,jj,jk) == 1)) then
+                                  tmp_u_phi = (phi_u3d(jh,ji-1,jj,jk)*umask(ji-1,jj,jk))
+                                else 
+                                  cycle
+                                end if
+
+
+                                if ( (vmask(ji,jj,jk) == 1) .AND. (vmask(ji,jj-1,jk) == 1)) then
+                                  !tmp_v_phi = ((phi_v3d(jh,ji,jj,jk)*vmask(ji,jj,jk)) + (phi_v3d(jh,ji,jj-1,jk)*vmask(ji,jj-1,jk)))/(vmask(ji,jj,jk) + vmask(ji,jj-1,jk))
+                                  tmp_v_phi = atan2((sin(phi_v3d(jh,ji,jj,jk)) + sin(phi_v3d(jh,ji,jj-1,jk))),(cos(phi_v3d(jh,ji,jj,jk)) + cos(phi_v3d(jh,ji,jj-1,jk))))
+                                else if ( (vmask(ji,jj,jk) == 1) .AND. (vmask(ji,jj-1,jk) == 0)) then
+                                  tmp_v_phi = (phi_v3d(jh,ji,jj,jk)*vmask(ji,jj,jk))
+                                else if ( (vmask(ji,jj,jk) == 0) .AND. (vmask(ji,jj-1,jk) == 1)) then
+                                  tmp_v_phi = (phi_v3d(ji,jj-1,jk)*vmask(ji,jj-1,jk))
+                                else 
+                                  cycle
+                                end if
+
+
+        !             do jj=1,nlcj
+        !                do ji=1,nlci
+
+        !                        tmp_u_amp = ((amp_u2d(jh,ji,jj)) + (amp_u2d(jh,ji-1,jj)))/(2.)
+        !                        tmp_v_amp = ((amp_v2d(jh,ji,jj)) + (amp_v2d(jh,ji,jj-1)))/(2.)
+        !                        ! WORK ON THE WRAP AROUND
+        !                        tmp_u_phi = ((phi_u2d(jh,ji,jj)) + (phi_u2d(jh,ji-1,jj)))/(2.)
+        !                        tmp_v_phi = ((phi_v2d(jh,ji,jj)) + (phi_v2d(jh,ji,jj-1)))/(2.)
+
+
+
+        !                        tmp_u_amp = (amp_u2d(jh,ji,jj)) 
+        !                        tmp_v_amp = (amp_v2d(jh,ji,jj)) 
+        !                        ! WORK ON THE WRAP AROUND
+        !                        tmp_u_phi = (phi_u2d(jh,ji,jj)) 
+        !                        tmp_v_phi = (phi_v2d(jh,ji,jj)) 
+
+
+
+                                a_u = tmp_U_amp * cos(tmp_U_phi)
+                                b_u = tmp_U_amp * sin(tmp_U_phi)
+                                a_v = tmp_V_amp * cos(tmp_V_phi)
+                                b_v = tmp_V_amp * sin(tmp_V_phi)
+
+                                twodelta =  atan2( (tmp_V_amp**2  * sin( 2*(tmp_U_phi - tmp_V_phi)  ) ) , (   tmp_U_amp**2   +   tmp_V_amp**2  * cos( 2*(tmp_U_phi - tmp_V_phi)  )     ) )
+                                delta = twodelta/2.
+
+                                !alpha2 = sqrt( tmp_U_amp**4 + tmp_V_amp**4 + 2*tmp_U_amp**2*tmp_V_amp**2*cos(2*(tmp_U_phi - tmp_V_phi))  )
+
+                                tmpreal = tmp_U_amp**4 + tmp_V_amp**4 + 2*tmp_U_amp**2*tmp_V_amp**2*cos(2*(tmp_U_phi - tmp_V_phi)) 
+                                if (tmpreal < 0) tmpreal = 0 !CYCLE
+                                !alpha2 = sqrt( tmp_U_amp**4 + tmp_V_amp**4 + 2*tmp_U_amp**2*tmp_V_amp**2*cos(2*(tmp_U_phi - tmp_V_phi))  )
+                                alpha2 = sqrt( tmpreal )
+                                if (alpha2 < 0) alpha2 = 0 !CYCLE
+                                alpha= sqrt( alpha2 )
+
+
+                                !major and minor axis of the ellipse
+                                qmax = sqrt( (tmp_U_amp**2 + tmp_V_amp**2 + alpha**2)/2 )
+                                !tmpreal =  (tmp_U_amp**2 + tmp_V_amp**2 - alpha**2)/2
+                                !qmin = 0
+                                !if (tmpreal > 0) qmin = sqrt( (tmp_U_amp**2 + tmp_V_amp**2 - alpha**2)/2 )   ! but always positive.
+
+                                tmpreal =  (tmp_U_amp**2 + tmp_V_amp**2 - alpha**2)/2
+                                if (tmpreal < 0) tmpreal = 0 !CYCLE
+                                !qmin = sqrt( (tmp_U_amp**2 + tmp_V_amp**2 - alpha**2)/2 )   ! but always positive.
+                                qmin = sqrt( tmpreal )   ! but always positive.
+
+                                !eccentricity of ellipse
+
+                                tmpreal =  (qmax + qmin)
+                                if (tmpreal == 0) tmpreal = tmpreal + 0.0000001! CYCLE
+                                !ecc = (qmax - qmin)/(qmax + qmin)
+                                ecc = (qmax - qmin)/(tmpreal)
+                                ! Angle of major and minor ellipse
+                                thetamax = atan2((  tmp_V_amp * cos((tmp_U_phi - tmp_V_phi) - delta)   ) , ( tmp_U_amp * cos( delta) )  )
+                                thetamin = thetamax + rpi/2.
+
+
+
+                                ! Rotary current components: Pugh A3.10
+                                ! Clockwise (c) and anticlockwise (ac) rotating rotate_wind_vectors
+                                ! so   Qc = clockwise     = anticyclonic = negative
+                                ! and Qac = anticlockwise = cyclonic     = negative
+
+                                tmpreal = tmp_U_amp**2 + tmp_V_amp**2 - (2*tmp_U_amp*tmp_V_amp*sin( tmp_V_phi - tmp_U_phi))
+                                if (tmpreal < 0) tmpreal = 0! CYCLE
+                                !Qc  = 0.5*sqrt( tmp_U_amp**2 + tmp_V_amp**2 - (2*tmp_U_amp*tmp_V_amp*sin( tmp_V_phi - tmp_U_phi))  )
+                                Qc  = 0.5*sqrt( tmpreal )
+
+                                tmpreal = tmp_U_amp**2 + tmp_V_amp**2 + (2*tmp_U_amp*tmp_V_amp*sin( tmp_V_phi - tmp_U_phi)) 
+                                if (tmpreal < 0) tmpreal = 0! CYCLE
+                                !Qac = 0.5*sqrt( tmp_U_amp**2 + tmp_V_amp**2 + (2*tmp_U_amp*tmp_V_amp*sin( tmp_V_phi - tmp_U_phi))  )
+                                Qac = 0.5*sqrt( tmpreal )
+
+
+                                gc  = atan2(  (  (  tmp_U_amp*sin( tmp_U_phi ) ) +  (tmp_V_amp*cos( tmp_V_phi)  ) )  ,  (  (tmp_U_amp*cos( tmp_U_phi ))  -  (tmp_V_amp*sin( tmp_V_phi ))  )  )
+                                gac = atan2(  (  ( -tmp_U_amp*sin( tmp_U_phi ) ) +  (tmp_V_amp*cos( tmp_V_phi)  ) )  ,  (  (tmp_U_amp*cos( tmp_U_phi ))  +  (tmp_V_amp*sin( tmp_V_phi ))  )  )
+
+                                !Pugh A3.2
+                                Phi_Ua = -0.5*(gac - gc)
+                                dir_Ua = 0.5*(gac + gc)  ! positive from x axis
+
+                                tmpreal = qmax
+                                !if (tmpreal == 0) tmpreal = tmpreal + 0.0000001 !CYCLE
+                                if (tmpreal == 0) then 
+                                    polarity = 0
+                                else
+                                    polarity = (Qac - Qc)/qmax
+                                endif
+
+
+
+                                tmp_u_amp_3d_mat(ji,jj,jk) = tmp_u_amp
+                                tmp_v_amp_3d_mat(ji,jj,jk) = tmp_v_amp
+                                tmp_u_phi_3d_mat(ji,jj,jk) = tmp_u_phi
+                                tmp_v_phi_3d_mat(ji,jj,jk) = tmp_v_phi
+
+
+                                a_u_3d_mat(ji,jj,jk) = a_u
+                                b_u_3d_mat(ji,jj,jk) = b_u
+                                a_v_3d_mat(ji,jj,jk) = a_v
+                                b_v_3d_mat(ji,jj,jk) = b_v
+
+                                qmax_3d_mat(ji,jj,jk) = qmax
+                                qmin_3d_mat(ji,jj,jk) = qmin
+
+                                ecc_3d_mat(ji,jj,jk) = ecc
+                                thetamax_3d_mat(ji,jj,jk) = thetamax
+                                thetamin_3d_mat(ji,jj,jk) = thetamin
+
+                                Qc_3d_mat(ji,jj,jk) = Qc
+                                Qac_3d_mat(ji,jj,jk) = Qac
+                                gc_3d_mat(ji,jj,jk) = gc
+                                gac_3d_mat(ji,jj,jk) = gac
+
+                                Phi_Ua_3d_mat(ji,jj,jk) = Phi_Ua
+                                dir_Ua_3d_mat(ji,jj,jk) = dir_Ua
+                                polarity_3d_mat(ji,jj,jk) = polarity
+
+                            ENDIF
+                        END DO
+                     END DO
+                 END DO
+
+
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_u_amp_t_uv3d'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                   IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                   CALL iom_put( TRIM(tmp_name), tmp_u_amp_3d_mat(:,:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_v_amp_t_uv3d'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), tmp_v_amp_3d_mat(:,:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_u_phi_t_uv3d'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), tmp_u_phi_3d_mat(:,:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_v_phi_t_uv3d'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), tmp_v_phi_3d_mat(:,:,:))
+                ENDIF
+
+
+
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_a_u_uv3d'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                   IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                   CALL iom_put( TRIM(tmp_name), a_u_3d_mat(:,:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_a_v_uv3d'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), a_v_3d_mat(:,:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_b_u_uv3d'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), b_u_3d_mat(:,:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_b_v_uv3d'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), b_v_3d_mat(:,:,:))
+                ENDIF
+
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_qmax_uv3d'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), qmax_3d_mat(:,:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_qmin_uv3d'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), qmin_3d_mat(:,:,:))
+                ENDIF
+
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_ecc_uv3d'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), ecc_3d_mat(:,:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_thetamax_uv3d'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), thetamax_3d_mat(:,:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_thetamin_uv3d'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), thetamin_3d_mat(:,:,:))
+                ENDIF
+
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_Qc_uv3d'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), Qc_3d_mat(:,:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_Qac_uv3d'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), Qac_3d_mat(:,:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_gc_uv3d'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), gc_3d_mat(:,:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_gac_uv3d'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), gac_3d_mat(:,:,:))
+                ENDIF
+
+
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_Phi_Ua_uv3d'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), Phi_Ua_3d_mat(:,:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_dir_Ua_uv3d'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), dir_Ua_3d_mat(:,:,:))
+                ENDIF
+                tmp_name=TRIM(Wave(ntide_all(jh))%cname_tide)//'_polarity_uv3d'
+                IF( iom_use(TRIM(tmp_name)) ) THEN
+                  IF(lwp) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+                  CALL iom_put( TRIM(tmp_name), polarity_3d_mat(:,:,:))
+                ENDIF
+
+                tmp_u_amp_3d_mat(:,:,:) = 0.
+                tmp_v_amp_3d_mat(:,:,:) = 0.
+                tmp_u_phi_3d_mat(:,:,:) = 0.
+                tmp_v_phi_3d_mat(:,:,:) = 0.
+
+                a_u_3d_mat(:,:,:) = 0.
+                b_u_3d_mat(:,:,:) = 0.
+                a_v_3d_mat(:,:,:) = 0.
+                b_v_3d_mat(:,:,:) = 0.
+
+                qmax_3d_mat(:,:,:) = 0.
+                qmin_3d_mat(:,:,:) = 0.
+
+                ecc_3d_mat(:,:,:) = 0.
+                thetamax_3d_mat(:,:,:) =0.
+                thetamin_3d_mat(:,:,:) = 0.
+
+                Qc_3d_mat(:,:,:) = 0.
+                Qac_3d_mat(:,:,:) = 0.
+                gc_3d_mat(:,:,:) = 0.
+                gac_3d_mat(:,:,:) = 0.
+
+                Phi_Ua_3d_mat(:,:,:) = 0.
+                dir_Ua_3d_mat(:,:,:) = 0.
+                polarity_3d_mat(:,:,:) = 0.
+
+
+             END DO
+
+
+
+
+
+               IF(lwp) WRITE(numout,*) "diaharm_fast: Postprocess 3d velocity tidal parameters"
+          ENDIF
+
+          CALL FLUSH(numout)
+      ENDIF
+
+
+     CALL FLUSH(numout)
 
 ! to output tidal parameters, u and v on t grid
 !
@@ -1257,19 +1812,39 @@ CONTAINS
 
 
 
-!      IF (ln_diaharm_postproc_vel .AND. ln_ana_uvbar)  THEN
+      IF (ln_diaharm_postproc_vel)  THEN
+          IF (ln_ana_uvbar)  THEN
 
-!         DEALLOCATE(amp_u2d, amp_v2d, phi_u2d, phi_v2d )
+           DEALLOCATE(amp_u2d, amp_v2d, phi_u2d, phi_v2d )
 
+           DEALLOCATE(tmp_u_amp_2d_mat, tmp_v_amp_2d_mat, tmp_u_phi_2d_mat, tmp_v_phi_2d_mat )
 
-!         DEALLOCATE(tmp_u_amp_mat, tmp_v_amp_mat, tmp_u_phi_mat, tmp_v_phi_mat )
-!!         DEALLOCATE(a_u_mat, b_u_mat, a_v_mat, b_v_mat, qmax_mat, qmin_mat, ecc_mat )
-!!         DEALLOCATE(thetamax_mat, thetamin_mat, Qc_mat, Qac_mat, gc_mat, gac_mat )
-!!         DEALLOCATE(Phi_Ua_mat, dir_Ua_mat, polarity_mat )
+           DEALLOCATE(a_u_2d_mat, b_u_2d_mat, a_v_2d_mat, b_v_2d_mat )
+           DEALLOCATE(qmax_2d_mat, qmin_2d_mat, ecc_2d_mat )
+           DEALLOCATE(thetamax_2d_mat, thetamin_2d_mat, Qc_2d_mat, Qac_2d_mat)
+           DEALLOCATE(gc_2d_mat, gac_2d_mat, Phi_Ua_2d_mat, dir_Ua_2d_mat)
+           DEALLOCATE(polarity_2d_mat )
 
-!      endif
+        ENDIF
+        IF(lwp) WRITE(numout,*) "diaharm_fast: Deallocated 2d velocity tidal parameters"
 
-!      IF(lwp) WRITE(numout,*) "diaharm_fast: Deallocated 2d velocity tidal parameters"
+        IF (ln_ana_uv3d)  THEN
+
+           DEALLOCATE(amp_u3d, amp_v3d, phi_u3d, phi_v3d )
+
+           DEALLOCATE(tmp_u_amp_3d_mat, tmp_v_amp_3d_mat, tmp_u_phi_3d_mat, tmp_v_phi_3d_mat )
+
+           DEALLOCATE(a_u_3d_mat, b_u_3d_mat, a_v_3d_mat, b_v_3d_mat )
+           DEALLOCATE(qmax_3d_mat, qmin_3d_mat, ecc_3d_mat )
+           DEALLOCATE(thetamax_3d_mat, thetamin_3d_mat, Qc_3d_mat, Qac_3d_mat)
+           DEALLOCATE(gc_3d_mat, gac_3d_mat, Phi_Ua_3d_mat, dir_Ua_3d_mat)
+           DEALLOCATE(polarity_3d_mat )
+
+        ENDIF
+        IF(lwp) WRITE(numout,*) "diaharm_fast: Deallocated 3d velocity tidal parameters"
+
+      ENDIF
+
 
       CALL FLUSH(numout)
 !
