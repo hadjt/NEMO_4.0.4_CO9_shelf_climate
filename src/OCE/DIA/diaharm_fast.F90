@@ -759,9 +759,12 @@ CONTAINS
       REAL(wp)   :: tmp_u_amp ,tmp_v_amp ,tmp_u_phi ,tmp_v_phi
       REAL(wp)   :: a_u, b_u, a_v, b_v, twodelta, delta, alpha2, alpha, qmin, qmax, ecc,thetamax, thetamin
       REAL(wp)   :: Qc, Qac, gc,gac, Phi_Ua, dir_Ua, polarity
+      REAL(wp)   :: u_off, v_off
       REAL(wp)   :: tmpreal
 
       REAL(wp), ALLOCATABLE,DIMENSION(:,:)         :: tmp_u_amp_2d_mat,tmp_v_amp_2d_mat,tmp_u_phi_2d_mat,tmp_v_phi_2d_mat
+      REAL(wp), ALLOCATABLE,DIMENSION(:,:)         :: TA_u_off_t_uvbar, TA_v_off_t_uvbar
+      REAL(wp), ALLOCATABLE,DIMENSION(:,:)         :: TA_u_off_uvbar, TA_v_off_uvbar
       REAL(wp), ALLOCATABLE,DIMENSION(:,:)         :: a_u_2d_mat,b_u_2d_mat,a_v_2d_mat,b_v_2d_mat
       REAL(wp), ALLOCATABLE,DIMENSION(:,:)         :: qmax_2d_mat,qmin_2d_mat,ecc_2d_mat
       REAL(wp), ALLOCATABLE,DIMENSION(:,:)         :: thetamax_2d_mat,thetamin_2d_mat,Qc_2d_mat,Qac_2d_mat
@@ -769,6 +772,8 @@ CONTAINS
       REAL(wp), ALLOCATABLE,DIMENSION(:,:)         :: polarity_2d_mat
 
       REAL(wp), ALLOCATABLE,DIMENSION(:,:,:)       :: tmp_u_amp_3d_mat,tmp_v_amp_3d_mat,tmp_u_phi_3d_mat,tmp_v_phi_3d_mat
+      REAL(wp), ALLOCATABLE,DIMENSION(:,:,:)       :: TA_u_off_t_uv3d, TA_v_off_t_uv3d
+      REAL(wp), ALLOCATABLE,DIMENSION(:,:,:)       :: TA_u_off_uv3d, TA_v_off_uv3d
       REAL(wp), ALLOCATABLE,DIMENSION(:,:,:)       :: a_u_3d_mat,b_u_3d_mat,a_v_3d_mat,b_v_3d_mat
       REAL(wp), ALLOCATABLE,DIMENSION(:,:,:)       :: qmax_3d_mat,qmin_3d_mat,ecc_3d_mat
       REAL(wp), ALLOCATABLE,DIMENSION(:,:,:)       :: thetamax_3d_mat,thetamin_3d_mat,Qc_3d_mat,Qac_3d_mat
@@ -781,6 +786,9 @@ CONTAINS
       IF (ln_diaharm_postproc_vel)  THEN
           IF (ln_ana_uvbar) THEN
              ALLOCATE( amp_u2d(nb_ana,jpi,jpj), amp_v2d(nb_ana,jpi,jpj), phi_u2d(nb_ana,jpi,jpj), phi_v2d(nb_ana,jpi,jpj) )
+
+             ALLOCATE( TA_u_off_t_uvbar(jpi,jpj), TA_v_off_t_uvbar(jpi,jpj) )
+             ALLOCATE( TA_u_off_uvbar(jpi,jpj), TA_v_off_uvbar(jpi,jpj) )
              
              ALLOCATE(tmp_u_amp_2d_mat(jpi,jpj),tmp_v_amp_2d_mat(jpi,jpj),tmp_u_phi_2d_mat(jpi,jpj),tmp_v_phi_2d_mat(jpi,jpj))
              ALLOCATE(a_u_2d_mat(jpi,jpj),b_u_2d_mat(jpi,jpj),a_v_2d_mat(jpi,jpj),b_v_2d_mat(jpi,jpj))
@@ -794,6 +802,9 @@ CONTAINS
 
           IF (ln_ana_uv3d) THEN
              ALLOCATE( amp_u3d(nb_ana,jpi,jpj,jpk), amp_v3d(nb_ana,jpi,jpj,jpk), phi_u3d(nb_ana,jpi,jpj,jpk), phi_v3d(nb_ana,jpi,jpj,jpk) )
+
+             ALLOCATE( TA_u_off_t_uv3d(jpi,jpj,jpk), TA_v_off_t_uv3d(jpi,jpj,jpk) )
+             ALLOCATE( TA_u_off_uv3d(jpi,jpj,jpk), TA_v_off_uv3d(jpi,jpj,jpk) )
              
              ALLOCATE(tmp_u_amp_3d_mat(jpi,jpj,jpk),tmp_v_amp_3d_mat(jpi,jpj,jpk),tmp_u_phi_3d_mat(jpi,jpj,jpk),tmp_v_phi_3d_mat(jpi,jpj,jpk))
              ALLOCATE(a_u_3d_mat(jpi,jpj,jpk),b_u_3d_mat(jpi,jpj,jpk),a_v_3d_mat(jpi,jpj,jpk),b_v_3d_mat(jpi,jpj,jpk))
@@ -910,7 +921,46 @@ CONTAINS
 
          CALL FLUSH(numout)
 
-      enddo
+
+
+
+
+
+         IF (ln_diaharm_postproc_vel .AND. ln_ana_uvbar)  THEN
+
+           !IF (m_posi_2d(jgrid) == 2) THEN
+           IF (TRIM(suffix) == TRIM('u2d')) THEN
+             if (lwp)  WRITE(numout,*) "diaharm_fast ln_diaharm_postproc_vel: TA_u_off_uvbar"
+             do jj=1,nlcj
+                do ji=1,nlci
+                  if (ssumask(ji,jj) == 1) THEN
+                      TA_u_off_uvbar(ji,jj) =  g_cosamp2D( 0,ji,jj,jgrid)
+                  else
+                      TA_u_off_uvbar(ji,jj) = 0.
+                  ENDIF
+                enddo !ji
+             enddo    !jj
+           ENDIF      !u2d
+
+           !IF (m_posi_2d(jgrid) == 3) THEN
+           IF (TRIM(suffix) == TRIM('v2d')) THEN
+             if (lwp)  WRITE(numout,*) "diaharm_fast ln_diaharm_postproc_vel: TA_v_off_uvbar"
+             do jj=1,nlcj
+                do ji=1,nlci
+                  if (ssvmask(ji,jj) == 1) THEN
+                      TA_v_off_uvbar(ji,jj) =  g_cosamp2D( 0,ji,jj,jgrid)
+                  else
+                      TA_v_off_uvbar(ji,jj) = 0.
+                  ENDIF
+                enddo !ji
+             enddo    !jj
+           ENDIF      !uvd
+
+
+         ENDIF ! ln_diaharm_postproc_vel .AND. ln_ana_uvbar
+
+
+      enddo ! jgrid=1,nvar_2d
 !
 ! DO THE SAME FOR 3D VARIABLES
 !
@@ -999,8 +1049,8 @@ CONTAINS
                               amp_v3d(jh,ji,jj,jk) = h_out3D(ji,jj,jk)
                               phi_v3d(jh,ji,jj,jk) = rpi*g_out3D(ji,jj,jk)/180.0
                           else
-                              amp_v3d(jh,ji,jj,jk) = 0
-                              phi_v3d(jh,ji,jj,jk) = 0
+                              amp_v3d(jh,ji,jj,jk) = 0.
+                              phi_v3d(jh,ji,jj,jk) = 0.
                           ENDIF
                         enddo
                      enddo
@@ -1022,10 +1072,167 @@ CONTAINS
             IF(lwp .AND. ln_diaharm_verbose) WRITE(numout,*) "diaharm_fast: not requested: ",TRIM(tmp_name)
          ENDIF
 
-      enddo                 ! jgrid
+
+
+
+
+
+
+         IF (ln_diaharm_postproc_vel .AND. ln_ana_uv3d)  THEN
+
+           !IF (m_posi_2d(jgrid) == 2) THEN
+           IF (TRIM(suffix) == TRIM('u3d')) THEN
+             if (lwp)  WRITE(numout,*) "diaharm_fast ln_diaharm_postproc_vel: TA_u_off_uv3d"
+             DO jk=1,jpkm1
+                 do jj=1,nlcj
+                    do ji=1,nlci
+                      if (umask(ji,jj,jk) == 1) THEN
+                          TA_u_off_uv3d(ji,jj,jk) =  g_cosamp3D( 0,ji,jj,jk,jgrid)
+                      else
+                          TA_u_off_uv3d(ji,jj,jk) = 0.
+                      ENDIF
+                    enddo
+                 enddo
+             enddo
+           ENDIF
+
+           !IF (m_posi_2d(jgrid) == 3) THEN
+           IF (TRIM(suffix) == TRIM('v3d')) THEN
+             if (lwp)  WRITE(numout,*) "diaharm_fast ln_diaharm_postproc_vel: TA_v_off_uv3d"
+             DO jk=1,jpkm1
+                 do jj=1,nlcj
+                    do ji=1,nlci
+                      if (vmask(ji,jj,jk) == 1) THEN
+                          TA_v_off_uv3d(ji,jj,jk) =  g_cosamp3D( 0,ji,jj,jk,jgrid)
+                      else
+                          TA_v_off_uv3d(ji,jj,jk) = 0.
+                      ENDIF
+                    enddo !jk
+                enddo     !ji
+             enddo        !jj
+           ENDIF          !uvd
+
+
+         ENDIF ! ln_diaharm_postproc_vel .AND. ln_ana_uv3d
+
+
+     enddo ! jgrid=1,nvar_2d
+
+
 
      CALL FLUSH(numout)
 
+
+
+
+      IF (ln_diaharm_postproc_vel )  THEN
+
+
+        TA_u_off_t_uvbar(:,:) = 0.
+        TA_v_off_t_uvbar(:,:) = 0.
+     
+        DO jj = 1, nlcj !- 1
+            DO ji = 1, nlci ! - 1
+
+                IF ( ((ssumask(ji,jj) + ssumask(ji-1,jj)) > 0 ) .AND. ((ssvmask(ji,jj) + ssvmask(ji,jj-1)) > 0 ) ) THEN
+
+                    if ( (ssumask(ji,jj) == 1) .AND. (ssumask(ji-1,jj) == 1)) then
+                      u_off = ((TA_u_off_uvbar(ji,jj)*ssumask(ji,jj)) + (TA_u_off_uvbar(ji-1,jj)*ssumask(ji-1,jj)))/(ssumask(ji,jj) + ssumask(ji-1,jj))
+                    else if ( (ssumask(ji,jj) == 1) .AND. (ssumask(ji-1,jj) == 0)) then
+                      u_off = (TA_u_off_uvbar(ji,jj)*ssumask(ji,jj)) 
+                    else if ( (ssumask(ji,jj) == 0) .AND. (ssumask(ji-1,jj) == 1)) then
+                      u_off = (TA_u_off_uvbar(ji-1,jj)*ssumask(ji-1,jj))
+                    else 
+                      cycle
+                    end if  
+
+
+                    if ( (ssvmask(ji,jj) == 1) .AND. (ssvmask(ji,jj-1) == 1)) then
+                      v_off = ((TA_v_off_uvbar(ji,jj)*ssvmask(ji,jj)) + (TA_v_off_uvbar(ji,jj-1)*ssvmask(ji,jj-1)))/(ssvmask(ji,jj) + ssvmask(ji,jj-1))
+                    else if ( (ssvmask(ji,jj) == 1) .AND. (ssvmask(ji,jj-1) == 0)) then
+                      v_off = (TA_v_off_uvbar(ji,jj)*ssvmask(ji,jj))
+                    else if ( (ssvmask(ji,jj) == 0) .AND. (ssvmask(ji,jj-1) == 1)) then
+                      v_off = (TA_v_off_uvbar(ji,jj-1)*ssvmask(ji,jj-1))
+                    else 
+                      cycle
+                    end if
+
+                    TA_u_off_t_uvbar(ji,jj) = u_off
+                    TA_v_off_t_uvbar(ji,jj) = v_off
+
+                ENDIF 
+            END DO !ji
+        END DO     !jj
+
+        tmp_name='TA_u_off_t_uvbar'
+        IF( iom_use(TRIM(tmp_name)) ) THEN
+           IF(lwp .AND. ln_diaharm_verbose) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+           CALL iom_put( TRIM(tmp_name), TA_u_off_t_uvbar(:,:))
+        ENDIF
+        tmp_name='TA_v_off_t_uvbar'
+        IF( iom_use(TRIM(tmp_name)) ) THEN
+          IF(lwp .AND. ln_diaharm_verbose) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+          CALL iom_put( TRIM(tmp_name), TA_v_off_t_uvbar(:,:))
+        ENDIF
+ 
+        TA_u_off_t_uvbar(:,:) = 0.
+        TA_v_off_t_uvbar(:,:) = 0.
+
+
+
+        TA_u_off_t_uv3d(:,:,:) = 0.
+        TA_v_off_t_uv3d(:,:,:) = 0.
+     
+        DO jk=1,jpkm1
+            DO jj = 1, nlcj !- 1
+                DO ji = 1, nlci ! - 1
+
+                    IF ( ((umask(ji,jj,jk) + umask(ji-1,jj,jk)) > 0 ) .AND. ((vmask(ji,jj,jk) + vmask(ji,jj-1,jk)) > 0 ) ) THEN
+
+                        if ( (umask(ji,jj,jk) == 1) .AND. (umask(ji-1,jj,jk) == 1)) then
+                          u_off = ((TA_u_off_uv3d(ji,jj,jk)*umask(ji,jj,jk)) + (TA_u_off_uv3d(ji-1,jj,jk)*umask(ji-1,jj,jk)))/(umask(ji,jj,jk) + umask(ji-1,jj,jk))
+                        else if ( (umask(ji,jj,jk) == 1) .AND. (umask(ji-1,jj,jk) == 0)) then
+                          u_off = (TA_u_off_uv3d(ji,jj,jk)*umask(ji,jj,jk)) 
+                        else if ( (umask(ji,jj,jk) == 0) .AND. (umask(ji-1,jj,jk) == 1)) then
+                          u_off = (TA_u_off_uv3d(ji-1,jj,jk)*umask(ji-1,jj,jk))
+                        else 
+                          cycle
+                        end if  
+
+
+                        if ( (vmask(ji,jj,jk) == 1) .AND. (vmask(ji,jj-1,jk) == 1)) then
+                          v_off = ((TA_v_off_uv3d(ji,jj,jk)*vmask(ji,jj,jk)) + (TA_v_off_uv3d(ji,jj-1,jk)*vmask(ji,jj-1,jk)))/(vmask(ji,jj,jk) + vmask(ji,jj-1,jk))
+                        else if ( (vmask(ji,jj,jk) == 1) .AND. (vmask(ji,jj-1,jk) == 0)) then
+                          v_off = (TA_v_off_uv3d(ji,jj,jk)*vmask(ji,jj,jk))
+                        else if ( (vmask(ji,jj,jk) == 0) .AND. (vmask(ji,jj-1,jk) == 1)) then
+                          v_off = (TA_v_off_uv3d(ji,jj-1,jk)*vmask(ji,jj-1,jk))
+                        else 
+                          cycle
+                        end if
+
+                        TA_u_off_t_uv3d(ji,jj,jk) = u_off
+                        TA_v_off_t_uv3d(ji,jj,jk) = v_off
+
+                    ENDIF
+                END DO !ji
+            END DO    !jj
+        END DO        !jk
+
+        tmp_name='TA_u_off_t_uv3d'
+        IF( iom_use(TRIM(tmp_name)) ) THEN
+           IF(lwp .AND. ln_diaharm_verbose) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+           CALL iom_put( TRIM(tmp_name), TA_u_off_t_uv3d(:,:,:))
+        ENDIF
+        tmp_name='TA_v_off_t_uv3d'
+        IF( iom_use(TRIM(tmp_name)) ) THEN
+          IF(lwp .AND. ln_diaharm_verbose) WRITE(numout,*) "diaharm_fast: iom_put: ",TRIM(tmp_name)
+          CALL iom_put( TRIM(tmp_name), TA_v_off_t_uv3d(:,:,:))
+        ENDIF
+ 
+        TA_u_off_t_uv3d(:,:,:) = 0.
+        TA_v_off_t_uv3d(:,:,:) = 0.
+       
+      ENDIF
 
       IF (ln_diaharm_postproc_vel )  THEN
           IF ( ln_ana_uvbar)  THEN
@@ -1069,7 +1276,6 @@ CONTAINS
                             if ( (ssumask(ji,jj) == 1) .AND. (ssumask(ji-1,jj) == 1)) then
 
                               tmp_u_amp = ((amp_u2d(jh,ji,jj)*ssumask(ji,jj)) + (amp_u2d(jh,ji-1,jj)*ssumask(ji-1,jj)))/(ssumask(ji,jj) + ssumask(ji-1,jj))
-                              !tmp_u_phi = ((phi_u2d(jh,ji,jj)*ssumask(ji,jj)) + (phi_u2d(jh,ji-1,jj)*ssumask(ji-1,jj)))/(ssumask(ji,jj) + ssumask(ji-1,jj))
                               tmp_u_phi = atan2((sin(phi_u2d(jh,ji,jj)) + sin(phi_u2d(jh,ji-1,jj))),(cos(phi_u2d(jh,ji,jj)) + cos(phi_u2d(jh,ji-1,jj))))
                             else if ( (ssumask(ji,jj) == 1) .AND. (ssumask(ji-1,jj) == 0)) then
                               tmp_u_amp = (amp_u2d(jh,ji,jj)*ssumask(ji,jj))
@@ -1084,14 +1290,12 @@ CONTAINS
 
                             if ( (ssvmask(ji,jj) == 1) .AND. (ssvmask(ji,jj-1) == 1)) then
                               tmp_v_amp = ((amp_v2d(jh,ji,jj)*ssvmask(ji,jj)) + (amp_v2d(jh,ji,jj-1)*ssvmask(ji,jj-1)))/(ssvmask(ji,jj) + ssvmask(ji,jj-1))
-                              !tmp_v_phi = ((phi_v2d(jh,ji,jj)*ssvmask(ji,jj)) + (phi_v2d(jh,ji,jj-1)*ssvmask(ji,jj-1)))/(ssvmask(ji,jj) + ssvmask(ji,jj-1))
                               tmp_v_phi = atan2((sin(phi_v2d(jh,ji,jj)) + sin(phi_v2d(jh,ji,jj-1))),(cos(phi_v2d(jh,ji,jj)) + cos(phi_v2d(jh,ji,jj-1))))
                             else if ( (ssvmask(ji,jj) == 1) .AND. (ssvmask(ji,jj-1) == 0)) then
                               tmp_v_amp = (amp_v2d(jh,ji,jj)*ssvmask(ji,jj))
                               tmp_v_phi = (phi_v2d(jh,ji,jj)*ssvmask(ji,jj))
                             else if ( (ssvmask(ji,jj) == 0) .AND. (ssvmask(ji,jj-1) == 1)) then
                               tmp_v_amp = (amp_v2d(jh,ji,jj-1)*ssvmask(ji,jj-1))
-                              !tmp_v_phi = (phi_v2d(jh,ji,jj-1)*ssvmask(ji,jj-1))
                               tmp_v_phi = (phi_v2d(jh,ji,jj-1)*ssvmask(ji,jj-1))
                             else 
                               cycle
@@ -1377,31 +1581,13 @@ CONTAINS
 
 
                 DO jk=1,jpkm1
-                     !DO jj = 2, nlcj ! - 1
-                     !   DO ji = 2, nlci ! - 1
-
-                 !    DO jj = 1, jpjm1    #works
-                 !       DO ji = 1, jpim1
-
                      DO jj = 1, nlcj !- 1
                         DO ji = 1, nlci ! - 1
 
-
-        !             do jj=2,nlcj
-        !                do ji=2,nlci
-                            !IF ((umask(ji,jj) + umask(ji-1,jj)) == 0 ) CYCLE
-                            !IF ((vmask(ji,jj) + vmask(ji,jj-1)) == 0 ) CYCLE
-
                             IF ( ((umask(ji,jj,jk) + umask(ji-1,jj,jk)) > 0 ) .AND. ((vmask(ji,jj,jk) + vmask(ji,jj-1,jk)) > 0 ) ) THEN
-                                !tmp_u_amp = ((amp_u3d(jh,ji,jj,jk)*umask(ji,jj,jk)) + (amp_u3d(jh,ji-1,jj,jk)*umask(ji-1,jj,jk)))/(umask(ji,jj,jk) + umask(ji-1,jj,jk))
-                                !tmp_v_amp = ((amp_v3d(jh,ji,jj,jk)*vmask(ji,jj,jk)) + (amp_v3d(jh,ji,jj-1,jk)*vmask(ji,jj-1,jk)))/(vmask(ji,jj,jk) + vmask(ji,jj-1,jk))
-                                ! WORK ON THE WRAP AROUND
-                                !tmp_u_phi = ((phi_u3d(jh,ji,jj,jk)*umask(ji,jj,jk)) + (phi_u3d(jh,ji-1,jj,jk)*umask(ji-1,jj,jk)))/(umask(ji,jj,jk) + umask(ji-1,jj,jk))
-                                !tmp_v_phi = ((phi_v3d(jh,ji,jj,jk)*vmask(ji,jj,jk)) + (phi_v3d(jh,ji,jj-1,jk)*vmask(ji,jj-1,jk)))/(vmask(ji,jj,jk) + vmask(ji,jj-1,jk))
 
                                 if ( (umask(ji,jj,jk) == 1) .AND. (umask(ji-1,jj,jk) == 1)) then
                                   tmp_u_amp = ((amp_u3d(jh,ji,jj,jk)*umask(ji,jj,jk)) + (amp_u3d(jh,ji-1,jj,jk)*umask(ji-1,jj,jk)))/(umask(ji,jj,jk) + umask(ji-1,jj,jk))
-                                  !tmp_u_phi = ((phi_u3d(jh,ji,jj,jk)*umask(ji,jj,jk)) + (phi_u3d(jh,ji-1,jj,jk)*umask(ji-1,jj,jk)))/(umask(ji,jj,jk) + umask(ji-1,jj,jk))
                                   tmp_u_phi = atan2((sin(phi_u3d(jh,ji,jj,jk)) + sin(phi_u3d(jh,ji-1,jj,jk))),(cos(phi_u3d(jh,ji,jj,jk)) + cos(phi_u3d(jh,ji-1,jj,jk))))
                                 else if ( (umask(ji,jj,jk) == 1) .AND. (umask(ji-1,jj,jk) == 0)) then
                                   tmp_u_amp = (amp_u3d(jh,ji,jj,jk)*umask(ji,jj,jk)) 
@@ -1416,7 +1602,6 @@ CONTAINS
 
                                 if ( (vmask(ji,jj,jk) == 1) .AND. (vmask(ji,jj-1,jk) == 1)) then
                                   tmp_v_amp = ((amp_v3d(jh,ji,jj,jk)*vmask(ji,jj,jk)) + (amp_v3d(jh,ji,jj-1,jk)*vmask(ji,jj-1,jk)))/(vmask(ji,jj,jk) + vmask(ji,jj-1,jk))
-                                  !tmp_v_phi = ((phi_v3d(jh,ji,jj,jk)*vmask(ji,jj,jk)) + (phi_v3d(jh,ji,jj-1,jk)*vmask(ji,jj-1,jk)))/(vmask(ji,jj,jk) + vmask(ji,jj-1,jk))
                                   tmp_v_phi = atan2((sin(phi_v3d(jh,ji,jj,jk)) + sin(phi_v3d(jh,ji,jj-1,jk))),(cos(phi_v3d(jh,ji,jj,jk)) + cos(phi_v3d(jh,ji,jj-1,jk))))
                                 else if ( (vmask(ji,jj,jk) == 1) .AND. (vmask(ji,jj-1,jk) == 0)) then
                                   tmp_v_amp = (amp_v3d(jh,ji,jj,jk)*vmask(ji,jj,jk))
@@ -1705,6 +1890,8 @@ CONTAINS
           IF (ln_ana_uvbar)  THEN
 
            DEALLOCATE(amp_u2d, amp_v2d, phi_u2d, phi_v2d )
+           DEALLOCATE(TA_u_off_t_uvbar, TA_v_off_t_uvbar )
+           DEALLOCATE(TA_u_off_uvbar, TA_v_off_uvbar )
 
            DEALLOCATE(tmp_u_amp_2d_mat, tmp_v_amp_2d_mat, tmp_u_phi_2d_mat, tmp_v_phi_2d_mat )
 
@@ -1720,6 +1907,8 @@ CONTAINS
         IF (ln_ana_uv3d)  THEN
 
            DEALLOCATE(amp_u3d, amp_v3d, phi_u3d, phi_v3d )
+           DEALLOCATE(TA_u_off_t_uv3d, TA_v_off_t_uv3d )
+           DEALLOCATE(TA_u_off_uv3d, TA_v_off_uv3d )
 
            DEALLOCATE(tmp_u_amp_3d_mat, tmp_v_amp_3d_mat, tmp_u_phi_3d_mat, tmp_v_phi_3d_mat )
 
