@@ -83,6 +83,7 @@ MODULE diaharm_fast
    LOGICAL, PUBLIC :: ln_diaharm_fast
    LOGICAL, PUBLIC :: ln_diaharm_postproc_vel
    LOGICAL, PUBLIC :: ln_diaharm_verbose
+   LOGICAL, PUBLIC :: ln_diaharm_baroc3dvel_only
 
 
    !JT
@@ -221,8 +222,13 @@ CONTAINS
                    DO j3d=1,nvar_3d
                       DO jk=1,jpkm1
                          IF ( m_posi_3d(j3d) .eq. 1 ) dd_cumul = c(jh) *  rhd(ji,jj,jk)               * tmask(ji,jj,jk)   
-                         IF ( m_posi_3d(j3d) .eq. 2 ) dd_cumul = c(jh) * ( un(ji,jj,jk)-un_b(ji,jj) ) * umask(ji,jj,jk) 
-                         IF ( m_posi_3d(j3d) .eq. 3 ) dd_cumul = c(jh) * ( vn(ji,jj,jk)-vn_b(ji,jj) ) * vmask(ji,jj,jk)
+                         IF ( ln_diaharm_baroc3dvel_only ) THEN
+                             IF ( m_posi_3d(j3d) .eq. 2 ) dd_cumul = c(jh) * ( un(ji,jj,jk)-un_b(ji,jj) ) * umask(ji,jj,jk) 
+                             IF ( m_posi_3d(j3d) .eq. 3 ) dd_cumul = c(jh) * ( vn(ji,jj,jk)-vn_b(ji,jj) ) * vmask(ji,jj,jk)
+                         ELSE   
+                             IF ( m_posi_3d(j3d) .eq. 2 ) dd_cumul = c(jh) * ( un(ji,jj,jk) ) * umask(ji,jj,jk) 
+                             IF ( m_posi_3d(j3d) .eq. 3 ) dd_cumul = c(jh) * ( vn(ji,jj,jk) ) * vmask(ji,jj,jk)
+                         ENDIF
                          IF ( m_posi_3d(j3d) .eq. 4 ) dd_cumul = c(jh) *   wn(ji,jj,jk)               * wmask(ji,jj,jk)
                          g_cumul_var3D(jh,ji,jj,jk,j3d) = g_cumul_var3D(jh,ji,jj,jk,j3d) + dd_cumul
                       ENDDO
@@ -368,7 +374,8 @@ CONTAINS
 
       NAMELIST/nam_diaharm_fast/ ln_diaharm_fast, ln_diaharm_store, ln_diaharm_compute, ln_diaharm_read_restart, &
                & ln_ana_ssh, ln_ana_uvbar, ln_ana_bfric, ln_ana_rho, ln_ana_uv3d, ln_ana_w3d, &
-               & tname,ln_diaharm_multiyear,nn_diaharm_multiyear,ln_diaharm_update_nodal_daily,ln_diaharm_postproc_vel, ln_diaharm_verbose
+               & tname,ln_diaharm_multiyear,nn_diaharm_multiyear,ln_diaharm_update_nodal_daily,&
+               & ln_diaharm_postproc_vel,ln_diaharm_baroc3dvel_only, ln_diaharm_verbose
       !!----------------------------------------------------------------------
       !JT
       ln_diaharm_fast = .FALSE.
@@ -381,6 +388,7 @@ CONTAINS
       ln_diaharm_store = .TRUE.
 
       ln_diaharm_postproc_vel = .FALSE.
+      ln_diaharm_baroc3dvel_only = .TRUE.
 
       IF(lwp) WRITE(numout,*)
       IF(lwp) WRITE(numout,*) 'harm_init : initialization of harmonic analysis of tides'
@@ -410,6 +418,8 @@ CONTAINS
          WRITE(numout,*) '   Density harmonic analysis: ln_ana_rho = ', ln_ana_rho
          WRITE(numout,*) '   3D velocities harmonic analysis: ln_ana_uv3d = ', ln_ana_uv3d
          WRITE(numout,*) '   Vertical Velocities harmonic analysis: ln_ana_w3d = ', ln_ana_w3d
+         WRITE(numout,*) '   Use baroclinic component of vel for 3D velocities '
+         WRITE(numout,*) '          rather than full velocities:ln_diaharm_baroc3dvel_only = ', ln_diaharm_baroc3dvel_only
          WRITE(numout,*) '   Names of harmonics: tname = ', tname
          WRITE(numout,*) '   Max number of harmonics: jpmax_harmo = ', jpmax_harmo
          WRITE(numout,*) '   Number of Harmonics: nb_harmo = ', nb_harmo
@@ -417,8 +427,42 @@ CONTAINS
          WRITE(numout,*) '   Multi-year harmonic analysis - number of years: nn_diaharm_multiyear = ', nn_diaharm_multiyear
          WRITE(numout,*) '   Multi-year harmonic analysis - number of years: ln_diaharm_update_nodal_daily = ', ln_diaharm_update_nodal_daily
          WRITE(numout,*) '   Number of Harmonics: nyear, nmonth = ', nyear, nmonth
-         WRITE(numout,*) '   Post-process velocity stats: ln_diaharm_postproc_vel = ',ln_diaharm_postproc_vel
          WRITE(numout,*) '   Verbose: ln_diaharm_verbose = ', ln_diaharm_verbose
+         WRITE(numout,*) '   Post-process velocity stats: ln_diaharm_postproc_vel = ',ln_diaharm_postproc_vel
+         WRITE(numout,*) " "
+         WRITE(numout,*) "  Examples of how to use the results of the harmonic analysis, with python code"
+         WRITE(numout,*) "       #Variable names in example code match the variables output by NEMO iom_put."
+         WRITE(numout,*) " "
+         WRITE(numout,*) "       #SSH/UY/V timeseries as estimated from the Harmonic Analysis"
+         WRITE(numout,*) "       SSH = M2amp_ssh*np.sin(tide_t*M2_freq - M2phi_ssh) # + TA_u2d_off"
+         WRITE(numout,*) "        "
+         WRITE(numout,*) "        "
+         WRITE(numout,*) "       # M2 U and V time series"
+         WRITE(numout,*) "       u_ts = M2_u_amp_t_uvbar*np.sin(tide_t*M2_freq - M2_u_phi_t_uvbar) # + TA_u2d_off"
+         WRITE(numout,*) "       v_ts = M2_v_amp_t_uvbar*np.sin(tide_t*M2_freq - M2_v_phi_t_uvbar) # + TA_v2d_off"
+         WRITE(numout,*) "        "
+         WRITE(numout,*) "       #Clockwise and anti-clockwise components of M2 tidal ellipse"
+         WRITE(numout,*) "        "
+         WRITE(numout,*) "       ang = np.linspace(0,2*np.pi,500)"
+         WRITE(numout,*) "        "
+         WRITE(numout,*) "       u_c = M2_Qc_uvbar*np.cos(-ang + M2_gc_uvbar) # + TA_u2d_off"
+         WRITE(numout,*) "       u_ac = M2_Qac_uvbar*np.cos(ang + M2_gac_uvbar) # + TA_u2d_off"
+         WRITE(numout,*) "       v_c = M2_Qc_uvbar*np.sin(-ang + M2_gc_uvbar) # + TA_v2d_off"
+         WRITE(numout,*) "       v_ac = M2_Qac_uvbar*np.sin(ang + M2_gac_uvbar) # + TA_v2d_off"
+         WRITE(numout,*) "        "
+         WRITE(numout,*) "       # M2 tidal ellipse from harmonic analysis"
+         WRITE(numout,*) "       plt.plot(u_ts, v_ts,'k.')"
+         WRITE(numout,*) "        "
+         WRITE(numout,*) "       # Circles, with radii of the semi-major (qmax) and semi-minor (qmin) axis, of the clockwise and anticlockwise component."
+         WRITE(numout,*) "       plt.plot(u_c,v_c,'y+')"
+         WRITE(numout,*) "       plt.plot(u_ac,v_ac,'g+')"
+         WRITE(numout,*) "       plt.plot(M2_qmax_uvbar*np.cos(ang),M2_qmax_uvbar*np.sin(ang),'r')"
+         WRITE(numout,*) "       plt.plot(M2_qmin_uvbar*np.cos(ang),M2_qmin_uvbar*np.sin(ang),'b')"
+         WRITE(numout,*) "        "
+         WRITE(numout,*) "       # M2 ellipse from the sum of the clockwise and anticlockwise component."
+         WRITE(numout,*) "       plt.plot(u_c+u_ac,v_c+v_ac,'o')"
+
+
 
       ENDIF
       ! JT
@@ -1870,20 +1914,6 @@ CONTAINS
 
 
      CALL FLUSH(numout)
-
-! to output tidal parameters, u and v on t grid
-!
-!                                  !==  standard Cd  ==!
-!         DO jj = 2, jpjm1
-!            DO ji = 2, jpim1
-!               imk = k_mk(ji,jj)    ! ocean bottom level at t-points
-!               zut = un(ji,jj,imk) + un(ji-1,jj,imk)     ! 2 x velocity at t-point
-!               zvt = vn(ji,jj,imk) + vn(ji,jj-1,imk)
-!               !                                                           ! here pCd0 = mask*boost * drag
-!               pCdU(ji,jj) = - pCd0(ji,jj) * SQRT(  0.25 * ( zut*zut + zvt*zvt ) + pke0  )
-!            END DO
-!         END DO
-
 
 
       IF (ln_diaharm_postproc_vel)  THEN
