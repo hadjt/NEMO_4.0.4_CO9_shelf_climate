@@ -105,7 +105,14 @@ CONTAINS
       NAMELIST/namsbc_flx/ cn_dir, sn_utau, sn_vtau, sn_qtot, sn_qsr, sn_emp,   &
       &                    sn_press, ln_shelf_flx
       ! JT
-
+      !JT remove nul from output.namelist.dyn
+      sn_utau%lname = ''
+      sn_vtau%lname = ''
+      sn_qtot%lname = ''
+      sn_qsr%lname = ''
+      sn_emp%lname = ''
+      sn_press%lname = ''
+      !JT remove nul from output.namelist.dyn
       !!---------------------------------------------------------------------
       !
       IF( kt == nit000 ) THEN                ! First call kt=nit000  

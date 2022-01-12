@@ -377,7 +377,14 @@ CONTAINS
                & tname,ln_diaharm_multiyear,nn_diaharm_multiyear,ln_diaharm_update_nodal_daily,&
                & ln_diaharm_postproc_vel,ln_diaharm_baroc3dvel_only, ln_diaharm_verbose
       !!----------------------------------------------------------------------
+
       !JT
+
+      !JT remove nul from output.namelist.dyn
+      DO jh = 1,jpmax_harmo 
+          tname(jh) = ''
+      END DO
+      !JT remove nul from output.namelist.dyn
       ln_diaharm_fast = .FALSE.
       ln_diaharm_multiyear = .FALSE.
       nn_diaharm_multiyear = 20

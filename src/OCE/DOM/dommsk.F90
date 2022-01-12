@@ -99,6 +99,11 @@ CONTAINS
       LOGICAL                         :: ln_shlat2d
       CHARACTER(len = 256)            :: cn_shlat2d_file, cn_shlat2d_var  
       !!
+
+      !JT remove nul from output.namelist.dyn
+      cn_shlat2d_file = ''
+      cn_shlat2d_var = ''
+      !JT remove nul from output.namelist.dyn
       NAMELIST/namlbc/ rn_shlat, ln_vorlat, ln_shlat2d, cn_shlat2d_file, cn_shlat2d_var
       NAMELIST/nambdy/ ln_bdy ,nb_bdy, ln_coords_file, cn_coords_file,         &
          &             ln_mask_file, cn_mask_file, cn_dyn2d, nn_dyn2d_dta,     &

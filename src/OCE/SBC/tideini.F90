@@ -58,6 +58,12 @@ CONTAINS
       NAMELIST/nam_tide/ln_tide, ln_tide_pot, ln_scal_load, ln_read_load, cn_tide_load, &
                   &     ln_tide_ramp, rn_scal_load, rdttideramp, dn_love_number, clname
       !!----------------------------------------------------------------------
+
+
+      
+      DO jk = 1, jpmax_harmo
+          clname(jk) = ''
+      END DO
       !
       ! Read Namelist nam_tide
       REWIND( numnam_ref )              ! Namelist nam_tide in reference namelist : Tides

@@ -72,6 +72,12 @@ CONTAINS
       NAMELIST/nam_diaharm/ ln_diaharm, nit000_han, nitend_han, nstep_han, tname
       !!----------------------------------------------------------------------
 
+      !JT remove nul from output.namelist.dyn
+      DO jh = 1,jpmax_harmo 
+          tname(jh) = ''
+      END DO
+      !JT remove nul from output.namelist.dyn
+
       IF(lwp) THEN
          WRITE(numout,*)
          WRITE(numout,*) 'dia_harm_init: Tidal harmonic analysis initialization'

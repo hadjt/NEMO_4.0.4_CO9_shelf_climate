@@ -58,6 +58,8 @@ CONTAINS
       READ  ( numnam_cfg, namdiu, IOSTAT = ios, ERR = 902 )
 902   IF( ios >  0 )   CALL ctl_nam ( ios , 'namdiu in configuration namelist' )      
       !
+      IF(lwm) WRITE ( numond, namdiu )
+
       IF( ln_diurnal_only .AND. ( .NOT. ln_diurnal ) ) THEN
          CALL ctl_stop( "ln_diurnal_only set, but ln_diurnal = FALSE !" )
       ENDIF
