@@ -69,8 +69,10 @@ CONTAINS
       !!              - save the trend in ttrd ('key_trdtra')
       !!
       !!----------------------------------------------------------------------
-      USE oce, ONLY :   ztrdt => ua   ! use ua as 3D workspace   
-      USE oce, ONLY :   ztrds => va   ! use va as 3D workspace   
+
+      !JT USE oce, ONLY :   ztrdt => ua   ! use ua as 3D workspace   
+      !JT USE oce, ONLY :   ztrds => va   ! use va as 3D workspace   
+
       !!
       INTEGER, INTENT(in) ::   kt     ! ocean time-step
       !!
@@ -102,10 +104,10 @@ CONTAINS
          IF( .NOT.ln_tradwl )   RETURN
       ENDIF
 
-      IF( l_trdtra ) THEN      ! Save ta and sa trends
-         ztrdt(:,:,:) = tsa(:,:,:,jp_tem)
-         ztrds(:,:,:) = 0.e0
-      ENDIF
+      !JT IF( l_trdtra ) THEN      ! Save ta and sa trends
+      !JT    ztrdt(:,:,:) = tsa(:,:,:,jp_tem)
+      !JT    ztrds(:,:,:) = 0.e0
+      !JT ENDIF
 !--------------------------------------------------------------------
 !  Set transmissivity
 !--------------------------------------------------------------------
@@ -197,10 +199,10 @@ CONTAINS
       enddo !jk
 
 
-      IF( l_trdtra ) THEN     ! qsr tracers trends saved for diagnostics
-         ztrdt(:,:,:) = tsa(:,:,:,jp_tem) - ztrdt(:,:,:)
-         !CEODCALL trd_mod( ztrdt, ztrds, jptra_trd_qsr, 'TRA', kt )
-      ENDIF
+      !JT IF( l_trdtra ) THEN     ! qsr tracers trends saved for diagnostics
+      !JT    ztrdt(:,:,:) = tsa(:,:,:,jp_tem) - ztrdt(:,:,:)
+      !JT    !CEODCALL trd_mod( ztrdt, ztrds, jptra_trd_qsr, 'TRA', kt )
+      !JT ENDIF
       !                       ! print mean trends (used for debugging)
       IF(ln_ctl)   CALL prt_ctl( tab3d_1=tsa(:,:,:,jp_tem), clinfo1=' qsr  - Ta: ', mask1=tmask, clinfo3='tra-ta' )
       !
