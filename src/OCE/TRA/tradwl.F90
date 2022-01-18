@@ -73,6 +73,8 @@ CONTAINS
       !JT USE oce, ONLY :   ztrdt => ua   ! use ua as 3D workspace   
       !JT USE oce, ONLY :   ztrds => va   ! use va as 3D workspace   
 
+      REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   ztrdt, ztrds   ! 3D workspace
+
       !!
       INTEGER, INTENT(in) ::   kt     ! ocean time-step
       !!
@@ -108,6 +110,13 @@ CONTAINS
       !JT    ztrdt(:,:,:) = tsa(:,:,:,jp_tem)
       !JT    ztrds(:,:,:) = 0.e0
       !JT ENDIF
+
+
+      IF( l_trdtra )   THEN                  !* Save ta and sa trends
+         ALLOCATE( ztrdt(jpi,jpj,jpk) , ztrds(jpi,jpj,jpk) )
+         ztrdt(:,:,:) = tsa(:,:,:,jp_tem)
+         ztrds(:,:,:) = tsa(:,:,:,jp_sal)
+      ENDIF
 !--------------------------------------------------------------------
 !  Set transmissivity
 !--------------------------------------------------------------------
@@ -203,7 +212,23 @@ CONTAINS
       !JT    ztrdt(:,:,:) = tsa(:,:,:,jp_tem) - ztrdt(:,:,:)
       !JT    !CEODCALL trd_mod( ztrdt, ztrds, jptra_trd_qsr, 'TRA', kt )
       !JT ENDIF
-      !                       ! print mean trends (used for debugging)
+      !                       
+      IF( l_trdtra ) THEN      ! qsr tracers trends saved for diagnostics
+
+         !JT I think I should use jptra_qsr?? 
+
+         !ztrdt(:,:,:) = tsa(:,:,:,jp_tem) - ztrdt(:,:,:)
+         !ztrds(:,:,:) = tsa(:,:,:,jp_sal) - ztrds(:,:,:)
+         DO jk = 1, jpkm1
+            ztrdt(:,:,jk) = tsa(:,:,jk,jp_tem) - ztrdt(:,:,jk)
+            ztrds(:,:,jk) = tsa(:,:,jk,jp_sal) - ztrds(:,:,jk)
+         END DO
+
+         CALL trd_tra( kt, 'TRA', jp_tem, jptra_qsr, ztrdt )
+         CALL trd_tra( kt, 'TRA', jp_sal, jptra_qsr, ztrds )
+         DEALLOCATE( ztrdt , ztrds )
+      ENDIF
+
       IF(ln_ctl)   CALL prt_ctl( tab3d_1=tsa(:,:,:,jp_tem), clinfo1=' qsr  - Ta: ', mask1=tmask, clinfo3='tra-ta' )
       !
    END SUBROUTINE tra_dwl
