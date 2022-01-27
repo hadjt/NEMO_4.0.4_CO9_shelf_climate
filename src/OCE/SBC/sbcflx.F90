@@ -247,7 +247,7 @@ CONTAINS
          DO ji = fs_2, fs_jpim1   ! vect. opt.
             ztx = ( utau(ji-1,jj  ) + utau(ji,jj) ) * 0.5_wp * ( 2._wp - MIN( umask(ji-1,jj  ,1), umask(ji,jj,1) ) )
             zty = ( vtau(ji  ,jj-1) + vtau(ji,jj) ) * 0.5_wp * ( 2._wp - MIN( vmask(ji  ,jj-1,1), vmask(ji,jj,1) ) ) 
-            zmod = 0.5_wp * SQRT( ztx * ztx + zty * zty ) * tmask(ji,jj,1)
+            zmod = SQRT( ztx * ztx + zty * zty ) * tmask(ji,jj,1)
             taum(ji,jj) = zmod
             wndm(ji,jj) = SQRT( zmod * zcoef )  !!clem: not used?
          END DO
