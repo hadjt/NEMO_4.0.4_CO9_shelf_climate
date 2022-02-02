@@ -121,28 +121,30 @@ CONTAINS
               CALL ctl_stop( 'tide_harmo: nam_tides360: if 360 day calendar ln_tide_drift and ln_tide_compress cannot be true' )
           ENDIF
           
+          IF( lwp ) THEN
 
-          IF ( ln_tide_drift   ) THEN
-              WRITE(numout,*) "       tides360: Tides continuous so equinoctal tides drift through the year,"
-              WRITE(numout,*) "                 as the S2-K2 beating occurs 5 days later every year."
-          ENDIF
+              IF ( ln_tide_drift   ) THEN
+                  WRITE(numout,*) "       tides360: Tides continuous so equinoctal tides drift through the year,"
+                  WRITE(numout,*) "                 as the S2-K2 beating occurs 5 days later every year."
+              ENDIF
 
-          IF ( ln_tide_compress   ) THEN
-              WRITE(numout,*) "       tides360: The Tropical Year (and so some tidal periods) are compressed,"
-              WRITE(numout,*) "                 so the tides repeat with an annual cycle, so the "
-              WRITE(numout,*) "                 the S2-K2 beating is fixed relative to the calendar, but the "
-              WRITE(numout,*) "                 M2 period varies slightly."
-              WRITE(numout,*) "                 Use with care, as this requires more work."
-          ENDIF
+              IF ( ln_tide_compress   ) THEN
+                  WRITE(numout,*) "       tides360: The Tropical Year (and so some tidal periods) are compressed,"
+                  WRITE(numout,*) "                 so the tides repeat with an annual cycle, so the "
+                  WRITE(numout,*) "                 the S2-K2 beating is fixed relative to the calendar, but the "
+                  WRITE(numout,*) "                 M2 period varies slightly."
+                  WRITE(numout,*) "                 Use with care, as this requires more work."
+              ENDIF
 
-          IF ( ( .NOT. ln_tide_drift  ) .AND. ( .NOT. ln_tide_compress ) ) THEN
-              WRITE(numout,*) "       tides360: Use the default NEMO tide code, where the tides are reset "
-              WRITE(numout,*) "                 at the beginning of each month, leading to a slight discontinuity"
-              WRITE(numout,*) "                 in the tides, and making tidal analysis difficult."
+              IF ( ( .NOT. ln_tide_drift  ) .AND. ( .NOT. ln_tide_compress ) ) THEN
+                  WRITE(numout,*) "       tides360: Use the default NEMO tide code, where the tides are reset "
+                  WRITE(numout,*) "                 at the beginning of each month, leading to a slight discontinuity"
+                  WRITE(numout,*) "                 in the tides, and making tidal analysis difficult."
+              ENDIF
           ENDIF
 
       ELSE        
-          WRITE(numout,*) "       tides360: Gregorian calendar so using standard tides"
+         IF( lwp )  WRITE(numout,*) "       tides360: Gregorian calendar so using standard tides"
       ENDIF
 
       !IF ( ln_tide_compress   )  

@@ -100,6 +100,12 @@ CONTAINS
       READ  ( numnam_cfg, nambdy, IOSTAT = ios, ERR = 902 )
 902   IF( ios >  0 )   CALL ctl_nam ( ios , 'nambdy in configuration namelist' )
       IF(lwm) WRITE ( numond, nambdy )
+
+      ! set a default value to nambdy_ssh, so switched on if not defined in Namelist
+      DO ib_bdy = 1,nb_bdy
+        ln_ssh_bdy(ib_bdy) = .True.
+        rn_ssh_shift(ib_bdy) = 0.
+      ENDDO
       
       ! davbyr Propagating ENDA's stuff from 3.6
       REWIND( numnam_ref )              ! Namelist nambdy in reference namelist :Unstructured open boundaries
