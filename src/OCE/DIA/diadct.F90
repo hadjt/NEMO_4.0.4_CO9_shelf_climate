@@ -633,6 +633,8 @@ CONTAINS
         !CALL wrk_dealloc( nb_sec_max,nb_type_class,nb_class_max , zsum  )
         DEALLOCATE( zwork ) 
         DEALLOCATE( zsum  )
+        DEALLOCATE( zwork_t ) 
+        DEALLOCATE( zsum_t  )
      ENDIF    
 
      IF( ln_timing )   CALL timing_stop('dia_dct')
