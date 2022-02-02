@@ -890,7 +890,7 @@ CONTAINS
                     CLOSE(numdct_reg_txt)
                 ENDIF
 
-                DEALLOCATE( region_mask, nreg_mat, tmp_field_mat,tmp_field_HSVM_mat)
+                DEALLOCATE( region_mask, nreg_mat, tmp_field_mat,tmp_field_HSVM_mat, region_area_mat)
                 IF( ln_diaregmean_diaar5  ) DEALLOCATE( tmp_field_AR5_mat)
                 IF( ln_diaregmean_diasbc  ) DEALLOCATE( tmp_field_SBC_mat)
             ENDIF
