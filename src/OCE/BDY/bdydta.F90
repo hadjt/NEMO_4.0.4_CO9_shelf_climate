@@ -347,6 +347,26 @@ CONTAINS
 #endif
       END DO  ! jbdy
 
+      !! JT I think this need to go here. The previous location didn't have an affect on the model. 
+      !       I think when time splitting, ln_dynspg_ts, you weren't seeing this effect, so trying it before the time splitting. 
+      !
+      ! 
+      ! davbyr - add a shift to the boundary + free elevation Enda, JT from NEMO RAN 3.6
+      DO jbdy = 1, nb_bdy
+         IF( dta_bdy(jbdy)%lneed_ssh ) THEN
+            igrd  = 1
+            DO ib = 1, idx_bdy(jbdy)%nblenrim(igrd)   ! ssh is used only on the rim
+                ii = idx_bdy(jbdy)%nbi(ib,igrd)
+                ij = idx_bdy(jbdy)%nbj(ib,igrd)
+                dta_bdy(jbdy)%ssh(ib) = dta_bdy(jbdy)%ssh(ib) + rn_ssh_shift(jbdy) * tmask(ii,ij,1)
+                IF( .NOT. dta_bdy(jbdy)%lforced_ssh ) dta_bdy(jbdy)%ssh(ib) = sshn(ii,ij) * tmask(ii,ij,1)
+             END DO
+         END IF
+      END DO
+      !--- END davbyr
+      !! JT I think this need to go here. 
+
+
       IF ( ln_tide ) THEN
          IF (ln_dynspg_ts) THEN      ! Fill temporary arrays with slow-varying bdy data                           
             DO jbdy = 1, nb_bdy      ! Tidal component added in ts loop
@@ -361,20 +381,6 @@ CONTAINS
             CALL bdy_dta_tides( kt=kt, kt_offset=kt_offset )
          ENDIF
       ENDIF
-      
-      ! davbyr - add a shift to the boundary + free elevation Enda, JT from NEMO RAN 3.6
-      DO jbdy = 1, nb_bdy
-         IF( dta_bdy(jbdy)%lneed_ssh ) THEN
-            igrd  = 1
-            DO ib = 1, idx_bdy(jbdy)%nblenrim(igrd)   ! ssh is used only on the rim
-                ii = idx_bdy(jbdy)%nbi(ib,igrd)
-                ij = idx_bdy(jbdy)%nbj(ib,igrd)
-                dta_bdy(jbdy)%ssh(ib) = dta_bdy(jbdy)%ssh(ib) + rn_ssh_shift(jbdy) * tmask(ii,ij,1)
-                IF( .NOT. dta_bdy(jbdy)%lforced_ssh ) dta_bdy(jbdy)%ssh(ib) = sshn(ii,ij) * tmask(ii,ij,1)
-             END DO
-         END IF
-      END DO
-      !--- END davbyr
       
       !
       IF( ln_timing )   CALL timing_stop('bdy_dta')
