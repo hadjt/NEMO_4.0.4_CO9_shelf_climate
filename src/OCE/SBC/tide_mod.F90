@@ -57,7 +57,6 @@ MODULE tide_mod
    INTEGER(KIND=8)  ::  days_since_origin
    LOGICAL  ::   ln_astro_verbose 
    !LOGICAL  ::   ln_tide_360_cal 
-   !LOGICAL  ::   ln_tide_drift_time_cont_manual
    LOGICAL  ::   ln_tide_drift                  ! Do we want to run with "drifting" tides? (Namelist)
    LOGICAL  ::   ln_tide_compress               ! Do we want to run with "compressed" tides? (Namelist)
    INTEGER  ::   nn_tide_orig_yr,nn_tide_orig_mn,nn_tide_orig_dy            !JT
@@ -108,7 +107,6 @@ CONTAINS
         WRITE(numout,*) "       tides360: Compress tides, so around a 360 day year: ln_tide_compress = ",ln_tide_compress
         WRITE(numout,*) "       tides360:           USE ln_tide_compress  WITH CARE. INCOMPLETE."
         WRITE(numout,*) "       tides360: Increase output verbosity: ln_astro_verbose = ",ln_astro_verbose
-        !WRITE(numout,*) "       tides360: Calculate time between origin and gregorian and 360 manually: ln_tide_drift_time_cont_manual = ",ln_tide_drift_time_cont_manual
         WRITE(numout,*) "       tides360: 360 day origin date year: nn_tide_orig_yr = ",nn_tide_orig_yr
         WRITE(numout,*) "       tides360: 360 day origin date month: nn_tide_orig_mn = ",nn_tide_orig_mn
         WRITE(numout,*) "       tides360: 360 day origin date day: nn_tide_orig_dy = ",nn_tide_orig_dy
@@ -164,72 +162,6 @@ CONTAINS
       !!----------------------------------------------------------------------
       !
 
-!      INTEGER                              ::   ios
-
-
-!      ln_tide_drift = .FALSE.
-!      ln_tide_compress = .FALSE.
-
-!      NAMELIST/nam_tides360/ ln_tide_drift,ln_tide_compress,ln_astro_verbose,&
-!        & nn_tide_orig_yr,nn_tide_orig_mn,nn_tide_orig_dy
-
-!      ! read in Namelist. 
-!      !!----------------------------------------------------------------------
-!      !
-!      REWIND ( numnam_ref )              ! Read Namelist nam_diatmb in referdiatmbence namelist : TMB diagnostics
-!      READ   ( numnam_ref, nam_tides360, IOSTAT=ios, ERR= 901 )
-!901   IF( ios /= 0 ) CALL ctl_nam ( ios , 'nam_tides360 in reference namelist' )
-
-!      REWIND( numnam_cfg )              ! Namelist nam_diatmb in configuration namelist  TMB diagnostics
-!      READ  ( numnam_cfg, nam_tides360, IOSTAT = ios, ERR = 902 )
-!902   IF( ios > 0 ) CALL ctl_nam ( ios , 'nam_tides360 in configuration namelist' )
-!      IF(lwm) WRITE ( numond, nam_tides360 )
-
-
-!      IF( lwp ) THEN
-!        WRITE(numout,*) " "
-!        WRITE(numout,*) "tide_harmo: nam_tides360 - 360 day tides "
-!        WRITE(numout,*) "~~~~~~~~~~~~~~~~~~~~~"
-!        WRITE(numout,*) "       tides360: allow tides to drift through year: ln_tide_drift = ",ln_tide_drift
-!        WRITE(numout,*) "       tides360: Compress tides, so around a 360 day year: ln_tide_compress = ",ln_tide_compress
-!        WRITE(numout,*) "       tides360:           USE ln_tide_compress  WITH CARE. INCOMPLETE."
-!        WRITE(numout,*) "       tides360: Increase output verbosity: ln_astro_verbose = ",ln_astro_verbose
-!        !WRITE(numout,*) "       tides360: Calculate time between origin and gregorian and 360 manually: ln_tide_drift_time_cont_manual = ",ln_tide_drift_time_cont_manual
-!        WRITE(numout,*) "       tides360: 360 day origin date year: nn_tide_orig_yr = ",nn_tide_orig_yr
-!        WRITE(numout,*) "       tides360: 360 day origin date month: nn_tide_orig_mn = ",nn_tide_orig_mn
-!        WRITE(numout,*) "       tides360: 360 day origin date day: nn_tide_orig_dy = ",nn_tide_orig_dy
-!        WRITE(numout,*) " "
-!      ENDIF
-
-! 
-!      IF( nleapy == 30 ) THEN
-!          IF ( ln_tide_drift .AND. ln_tide_compress ) THEN
-!              CALL ctl_stop( 'tide_harmo: nam_tides360: if 360 day calendar ln_tide_drift and ln_tide_compress cannot be true' )
-!          ENDIF
-!          
-
-!          IF ( ln_tide_drift   ) THEN
-!              WRITE(numout,*) "       tides360: Tides continuous so equinoctal tides drift through the year,"
-!              WRITE(numout,*) "                 as the S2-K2 beating occurs 5 days later every year."
-!          ENDIF
-
-!          IF ( ln_tide_compress   ) THEN
-!              WRITE(numout,*) "       tides360: The Tropical Year (and so some tidal periods) are compressed,"
-!              WRITE(numout,*) "                 so the tides repeat with an annual cycle, so the "
-!              WRITE(numout,*) "                 the S2-K2 beating is fixed relative to the calendar, but the "
-!              WRITE(numout,*) "                 M2 period varies slightly."
-!              WRITE(numout,*) "                 Use with care, as this requires more work."
-!          ENDIF
-
-!          IF ( ( .NOT. ln_tide_drift  ) .AND. ( .NOT. ln_tide_compress ) ) THEN
-!              WRITE(numout,*) "       tides360: Use the default NEMO tide code, where the tides are reset "
-!              WRITE(numout,*) "                 at the beginning of each month, leading to a slight discontinuity"
-!              WRITE(numout,*) "                 in the tides, and making tidal analysis difficult."
-!          ENDIF
-
-!      ELSE        
-!          WRITE(numout,*) "       tides360: Gregorian calendar so using standard tides"
-!      ENDIF
     
       CALL astronomic_angle
       CALL tide_pulse( pomega, ktide ,kc )
@@ -461,173 +393,35 @@ CONTAINS
         dy_org = nn_tide_orig_dy
 
         
-        !IF (ln_tide_drift_time_cont_manual) THEN
+        
+        CALL ymds2ju_JT( yr_org,mn_org,dy_org, 0. ,jul_org_greg,365.24 )
+        CALL ymds2ju_JT( yr_org,mn_org,dy_org, 0. ,jul_org_360,360. )
+        CALL ymds2ju_JT( yr_360,mn_360,dy_360, 0. ,jul_pres_360,360. )
+
+        ! Calculate the days since the origin: days_since_origin_ymds2ju_int
+        ! How many days between the current day, and the origin, in the 360 day calendar.
+        days_since_origin_ymds2ju_int = jul_pres_360 - jul_org_360
+
+        IF (ln_astro_verbose .AND. lwp) THEN
+            WRITE(numout,*) 'tide_mod_astro_ang 360_corr : jul_org_360,jul_pres_360,jul_pres_360 - jul_org_360 =',jul_org_360,jul_pres_360,jul_pres_360 - jul_org_360
+            WRITE(numout,*) 'tide_mod_astro_ang 360_corr : days_since_origin_ymds2ju_int, days_since_origin_ymds2ju_int mod 360 =',days_since_origin_ymds2ju_int,MOD( days_since_origin_ymds2ju_int ,360 )
+            WRITE(numout,*) 'tide_mod_astro_ang 360_corr : yr_org,mn_org,dy_org, jul_org_greg =',yr_org,mn_org,dy_org, jul_org_greg
+        ENDIF
+
+        !add days_since_origin_ymds2ju_int days to the origin in the gregorian calendar.
+        CALL ju2ymds_JT( days_since_origin_ymds2ju_int + jul_org_greg, yr_grg, mn_grg, dy_grg, sec_grg,365.24 )
+
+        IF (ln_astro_verbose .AND. lwp) THEN
+            WRITE(numout,*) 'tide_mod_astro_ang 360_corr : yr_grg, mn_grg, dy_grg =',yr_grg, mn_grg, dy_grg
+            WRITE(numout,*) 'tide_mod_astro_ang 360_corr : yr_360, mn_360, dy_360 =',yr_360, mn_360, dy_360
+            WRITE(numout,*) 'tide_mod_astro_ang 360_corr : yr_org, mn_org, dy_org =',yr_org, mn_org, dy_org
+        ENDIF
 
 
 
-!            IF (ln_astro_verbose .AND. lwp) THEN
-!                WRITE(numout,*) 'astro: yr_360,yr_org,((yr_360-yr_org)*360)', yr_360,yr_org,((yr_360-yr_org)*360)
-!                WRITE(numout,*) 'astro: mn_360,mn_org,((mn_360-mn_org)*30)', mn_360,mn_org,((mn_360-mn_org)*30)
-!                WRITE(numout,*) 'astro: dy_360,dy_org,(dy_360-dy_org)', dy_360,dy_org,(dy_360-dy_org)
-!            ENDIF
-!            
-!            ! how many days from 1900 in the 360 day calendar
-!            days_since_origin = ((yr_360-yr_org)*360) + ((mn_360-mn_org)*30) + (dy_360-dy_org)
-!
-!            ! first guess of what year this would be for the same numbers of days from 1/1/1900 in a gregorian calendar
-!            init_yr = yr_org + days_since_origin/365
-!
-!            ! was the initial estimated year a leap year? how many days in this year?
-!            day_in_init_yr = 365
-!            if (MOD(init_yr,4) == 0) day_in_init_yr = 366
-!
-!
-!
-!            !CALL ymds2ju_JT (yr_org, mn_org, dy_org, 0.0, fjulday_org,360.)
-!
-!            !IF (ln_astro_verbose) THEN
-!            !  IF(lwp) THEN
-!            !    WRITE(numout,*) 'astro: ymds2ju_JT yr_org, mn_org, dy_org,fjulday_org', yr_org, mn_org, dy_org,fjulday_org
-!            !  ENDIF
-!            !ENDIF
-!
-!
-!            !CALL ymds2ju( yr_org, mn_org, dy_org, 0.0, fjulday_org )  ! we assume that we start run at 00:00
-!            !IF( ABS(fjulday_org - REAL(NINT(fjulday_org),wp)) < 0.1 / rday )   fjulday_org = REAL(NINT(fjulday_org),wp)   ! avoid truncation error
-!            !fjulday_org = fjulday_org + 1.                             ! move back to the day at nit000 (and not at nit000 - 1)
-!
-!            !days_since_origin_ymds2ju_int = AINT(fjulday - fjulday_org)
-!
-!            IF (ln_astro_verbose .AND. lwp) THEN             
-!                WRITE(numout,*) 'astro: days_since_origin,init_yr,day_in_init_yr', days_since_origin,init_yr,day_in_init_yr
-!                !WRITE(numout,*) 'astro: fjulday_org', fjulday_org
-!                !WRITE(numout,*) 'astro: fjulday', fjulday
-!                !WRITE(numout,*) 'astro: fjulday - fjulday_org', fjulday - fjulday_org
-!                !WRITE(numout,*) 'astro: days_since_origin_ymds2ju_int', days_since_origin_ymds2ju_int
-!            ENDIF
-!
-!
-!            ! how many leap years since the origin. 
-!            nleap = (yr_360-yr_org)/4 - 1 !1900 is not a leap year
-!            
-!            ! initial estimate of the day of year
-!            init_doy = MOD(days_since_origin,365)
-!            
-!            ! correct the initial estimate for the DOY for the number of leap days since the origin
-!            init_doy_inc_l = init_doy - nleap
-!
-!
-!            IF (ln_astro_verbose .AND. lwp) THEN
-!                WRITE(numout,*) 'astro: nleap,init_doy,init_doy_inc_l',nleap,init_doy,init_doy_inc_l
-!            ENDIF
-!            
-!
-!            ! The number of leap days could pull the  DOY before 0.
-!            ! in which case decrement the year, and reset the DOY.
-!            ! of the origin is 365 leap years ago, and initial DOY could be adjusted by more than one year..
-!            ! Unlikely to be a prob, but need to remember if planning very long control runs. Need to think about this.
-!
-!            IF (init_doy_inc_l .LT. 0) THEN
-!                init_doy_inc_l = init_doy_inc_l+365
-!                init_yr = init_yr - 1 
-!                IF (MOD(init_yr, 4) == 0 ) THEN
-!                    init_doy_inc_l = init_doy_inc_l + 1
-!                ENDIF
-!            ENDIF
-!
-!            
-!            ! This gives the year and the day of year in the gregorian calendar
-!            yr_grg = init_yr    
-!            doy_grg = init_doy_inc_l
-!            yg_is_leap_mod = MOD(yr_grg, 4)
-!
-!            IF (ln_astro_verbose .AND. lwp) THEN
-!                WRITE(numout,*) 'astro: yr_grg,doy_grg,yg_is_leap_mod',yr_grg,doy_grg,yg_is_leap_mod
-!            ENDIF
-!
-!
-!            ! Convert from day of year to month and day in the gregorian calendar.
-!            !   dayjul code adapted
-!            !   this perhaps should be a function, but not sure how to write one
-!            !   there may be this code functionality elsewhere in NEMO
-!            !!----------------------------------------------------------------------
-!            
-!
-!            ! what is the DOY of the first day of the month for each month.
-!            !   correct for leap years.
-!            
-!            idays(1) = 0.
-!            idays(2) = 31.
-!            inc = 0.
-!            IF( yg_is_leap_mod == 0.)   inc = 1.
-!
-!            DO ji = 3, 12
-!                idays(ji)=idayt(ji)+inc
-!            END DO
-!        
-!            ! cycle through the months.
-!            !   if the DOY is greater than the DOY of the first Day of Month
-!            !       Note the month. Calculate day of month by subtraction.
-!            !   Once beyond the correct month, the if statement won't be true, so wont calculate.
-!
-!            DO ji = 1, 12
-!                IF ( doy_grg .GE. idays(ji) )  THEN
-!                    mn_grg = ji
-!                    dy_grg = doy_grg-idays(ji) +1
-!                ENDIF
-!            END DO
-!
-!
-!
-!
-!
-!            IF(ln_astro_verbose .AND. lwp) THEN
-!                WRITE(numout,*) 'astro: mn_grg,dy_grg',mn_grg,dy_grg
-!                WRITE(numout,*) ' '
-!                WRITE(numout,*) 'tide_mod_astro_ang 360_corr : yr_360,mn_360,dy_360,yr_grg,mn_grg,dy_grg,doy_grg =',yr_360,mn_360,dy_360,yr_grg,mn_grg,dy_grg,doy_grg
-!
-!                WRITE(numout,*) ' '
-!            ENDIF
-!            
-!
-!            
-!            IF (ln_astro_verbose .AND. lwp)  WRITE(numout,*) 'tide_mod_astro_ang_meth_1,',yr_grg, mn_grg, dy_grg
+        
+        IF (ln_astro_verbose .AND. lwp)  WRITE(numout,*) 'tide_mod_astro_ang_meth_2,',yr_grg, mn_grg, dy_grg
 
-
-        !ELSE ! ln_tide_drift_time_cont_manual
-            
-            
-            ! number of days since 15th October 1582, for namelist origin, in both calendars, and for current model day.
-            
-            CALL ymds2ju_JT( yr_org,mn_org,dy_org, 0. ,jul_org_greg,365.24 )
-            CALL ymds2ju_JT( yr_org,mn_org,dy_org, 0. ,jul_org_360,360. )
-            CALL ymds2ju_JT( yr_360,mn_360,dy_360, 0. ,jul_pres_360,360. )
-
-            ! Calculate the days since the origin: days_since_origin_ymds2ju_int
-            ! How many days between the current day, and the origin, in the 360 day calendar.
-            days_since_origin_ymds2ju_int = jul_pres_360 - jul_org_360
-
-            IF (ln_astro_verbose .AND. lwp) THEN
-                WRITE(numout,*) 'tide_mod_astro_ang 360_corr : jul_org_360,jul_pres_360,jul_pres_360 - jul_org_360 =',jul_org_360,jul_pres_360,jul_pres_360 - jul_org_360
-                WRITE(numout,*) 'tide_mod_astro_ang 360_corr : days_since_origin_ymds2ju_int, days_since_origin_ymds2ju_int mod 360 =',days_since_origin_ymds2ju_int,MOD( days_since_origin_ymds2ju_int ,360 )
-                WRITE(numout,*) 'tide_mod_astro_ang 360_corr : yr_org,mn_org,dy_org, jul_org_greg =',yr_org,mn_org,dy_org, jul_org_greg
-            ENDIF
-
-            !add days_since_origin_ymds2ju_int days to the origin in the gregorian calendar.
-            CALL ju2ymds_JT( days_since_origin_ymds2ju_int + jul_org_greg, yr_grg, mn_grg, dy_grg, sec_grg,365.24 )
-
-            IF (ln_astro_verbose .AND. lwp) THEN
-                WRITE(numout,*) 'tide_mod_astro_ang 360_corr : yr_grg, mn_grg, dy_grg =',yr_grg, mn_grg, dy_grg
-                WRITE(numout,*) 'tide_mod_astro_ang 360_corr : yr_360, mn_360, dy_360 =',yr_360, mn_360, dy_360
-                WRITE(numout,*) 'tide_mod_astro_ang 360_corr : yr_org, mn_org, dy_org =',yr_org, mn_org, dy_org
-            ENDIF
-
-
-
-            
-            IF (ln_astro_verbose .AND. lwp)  WRITE(numout,*) 'tide_mod_astro_ang_meth_2,',yr_grg, mn_grg, dy_grg
-
-        !ENDIF !ln_tide_drift_time_cont_manual
 
         ! for 360 calendars, work with the pseudo gregorian dates
         yr_wrk = yr_grg
@@ -636,12 +430,6 @@ CONTAINS
 
         days_since_origin = days_since_origin_ymds2ju_int
 
-        
-        !IF (ln_tide_compress) THEN        
-        !    yr_wrk = nyear
-        !    mn_wrk = nmonth
-        !    dy_wrk = nday
-        !ENDIF
 
       ELSE
 
@@ -997,273 +785,6 @@ CONTAINS
           IF(ln_astro_verbose .AND. lwp) WRITE(numout,*) 'astro tide_vuf 1:',jh,kc,ktide(jh),v0linearslope(jh),freq_per_day(jh), pomega(jh),(2*rpi/pomega(jh))/3600.! * 86400.0_wp,freq(jh)*24,per_hr(jh),freq(jh)
         ENDDO
 
-
-!        !offset(1) = 0.10789890_wp
-!        !offset(2) = 1.10897897_wp
-!        !offset(3) = 2.11005903_wp
-!        !offset(4) = 0.00000000_wp
-!        !offset(5) = 3.47632710_wp
-!        !offset(6) = 0.16751976_wp
-!        !offset(7) = -0.05503165_wp
-!        !offset(8) = 0.94604842_wp
-!        !offset(9) = 6.10534877_wp
-!        !offset(10) = 0.21579780_wp
-!        !offset(11) = 0.00000000_wp
-!        !offset(12) = 0.00000000_wp
-!        !offset(13) = 0.00000000_wp
-!        !offset(14) = 0.00000000_wp
-!        !offset(15) = 3.14159265_wp
-!        !offset(16) = 0.21833313_wp
-!        !offset(17) = 5.50043837_wp
-!        !offset(18) = 2.24841149_wp
-!        !offset(19) = 0.01800173_wp
-
-!        !v0linearintercept(1) = 0.11044027_wp
-!        !v0linearintercept(2) = 1.11152799_wp
-!        !v0linearintercept(3) = 2.11261570_wp
-!        !v0linearintercept(4) = 0.00000000_wp
-!        !v0linearintercept(5) = 3.49727335_wp
-!        !v0linearintercept(6) = 0.17784035_wp
-!        !v0linearintercept(7) = 6.21578523_wp
-!        !v0linearintercept(8) = 0.93368764_wp
-!        !v0linearintercept(9) = 6.10534496_wp
-!        !v0linearintercept(10) = 0.22088055_wp
-!        !v0linearintercept(11) = 0.00000000_wp
-!        !v0linearintercept(12) = 0.00000000_wp
-!        !v0linearintercept(13) = 0.00000000_wp
-!        !v0linearintercept(14) = 0.00000000_wp
-!        !v0linearintercept(15) = 3.14159265_wp
-
-!        !v0linearintercept(1) = v0linearintercept(1) - 0.000000_wp
-!        !v0linearintercept(2) = v0linearintercept(2) - 0.000000_wp
-!        !v0linearintercept(3) = v0linearintercept(3) - 0_wp
-!        !v0linearintercept(4) = v0linearintercept(4) - 0.165795_wp
-!        !v0linearintercept(5) = v0linearintercept(5) + 2.821252_wp
-!        !v0linearintercept(6) = v0linearintercept(6) + 0.479504_wp
-!        !v0linearintercept(7) = v0linearintercept(7) - 2.175621_wp
-!        !v0linearintercept(8) = v0linearintercept(8) + 1.900267_wp
-!        !v0linearintercept(9) = v0linearintercept(9) + 0.107633_wp
-!        !v0linearintercept(10) = v0linearintercept(10) - 0.000000_wp
-!        !v0linearintercept(11) = v0linearintercept(11) - 0.000000_wp
-!        !v0linearintercept(12) = v0linearintercept(12) - 0.225730_wp
-!        !v0linearintercept(13) = v0linearintercept(13) - 0.238641_wp
-!        !v0linearintercept(14) = v0linearintercept(14) - 3.005851_wp
-!        !v0linearintercept(15) = v0linearintercept(15) - 0.000000_wp
-
-!        !v0linearintercept(1) =   0.11044026999999999_wp
-!        !v0linearintercept(2) =   1.11152798999999990_wp
-!        !v0linearintercept(3) =   2.11261570000000010_wp
-!        !v0linearintercept(4) =  -0.16579500000000000_wp
-!        !v0linearintercept(5) =   6.31852534999999980_wp
-!        !v0linearintercept(6) =   0.65734435000000002_wp
-!        !v0linearintercept(7) =   4.04016423000000020_wp
-!        !v0linearintercept(8) =   2.83395464000000000_wp
-!        !v0linearintercept(9) =   6.21297795999999990_wp
-!        !v0linearintercept(10) =  0.22088055000000001_wp
-!        !v0linearintercept(11) =  0.00000000000000000_wp
-!        !v0linearintercept(12) = -0.22572999999999999_wp
-!        !v0linearintercept(13) = -0.23864099999999999_wp
-!        !v0linearintercept(14) = -3.00585099999999980_wp
-!        !v0linearintercept(15) =  3.14159265000000020_wp
-
-!        v0linearintercept( 1) =   0.2208805500_wp   -  (rpi* 68.0_wp/180.0_wp) !   M2  1
-!        v0linearintercept( 2) =   3.1186126191_wp  !   N2  2
-!        v0linearintercept( 3) =   0.9305155436_wp  !  2N2  3
-!        v0linearintercept( 4) =   0.0194858941_wp  !   S2  4
-!        v0linearintercept( 5) =  -2.5213114949_wp  !   K2  5
-!        v0linearintercept( 6) =   6.5970532125_wp  !   K1  6
-!        v0linearintercept( 7) =   1.1115279900_wp  !   O1  7
-!        v0linearintercept( 8) =   0.1104402700_wp  !   Q1  8
-!        !     v0linearintercept( 9) =   4.2269096542_wp  !   P1  9
-!        !v0linearintercept( 9) =  -2.0351042402_wp  !   P1  9  compress3
-!        !v0linearintercept( 9) =  -2.0351042402_wp  - 2.6179938779914944 !   P1  9  compress4
-
-!        v0linearintercept( 9) =   rpi* 345.0_wp/180.0_wp -  (rpi* 140.0_wp/180.0_wp) !   P1  9  compress4
-
-!        v0linearintercept(10) =   3.1415926500_wp  !   M4 10
-!        v0linearintercept(11) =   0.0000000000_wp  !   Mf 11
-!        v0linearintercept(12) =   0.0000000000_wp  !   Mm 12
-!        v0linearintercept(13) =   0.0000000000_wp  ! Msqm 13
-!        v0linearintercept(14) =   0.0000000000_wp  !  Mtm 14
-!        v0linearintercept(15) =  -0.0230244122_wp  !   S1 15
-!        v0linearintercept(16) =   4.2565208698_wp  !  MU2 16
-!        v0linearintercept(17) =   6.5001767059_wp  !  NU2 17
-!        v0linearintercept(18) =   0.0000000000_wp    -  (rpi* 113.0_wp/180.0_wp) !   L2 18
-!        v0linearintercept(19) =   0.0092971808_wp  !   T2 19  + rpi/2.
-
-!        !v0linearintercept(1) = v0linearintercept(1) - 0.034975_wp    ! M2
-!        !v0linearintercept(2) = v0linearintercept(2) - 0.030244_wp    ! N2
-!        !v0linearintercept(3) = v0linearintercept(3) - 0.036046_wp    ! 2N2
-!        !v0linearintercept(4) = v0linearintercept(4) + 0.002092_wp    ! S2
-!        !v0linearintercept(5) = v0linearintercept(5) - 0.273826_wp    ! K2
-!        !v0linearintercept(6) = v0linearintercept(6) - 0.144677_wp    ! K1
-!        !v0linearintercept(7) = v0linearintercept(7) + 0.031938_wp    ! O1
-!        !v0linearintercept(8) = v0linearintercept(8) - 0.812030_wp    ! Q1
-!        !v0linearintercept(9) = v0linearintercept(9) + 2.109118_wp    ! P1
-!        !v0linearintercept(10) = v0linearintercept(10) + 0.070021_wp    ! M4
-!        !v0linearintercept(11) = v0linearintercept(11) - 0.000000_wp    ! Mf
-!        !v0linearintercept(12) = v0linearintercept(12) - 0.000000_wp    ! Mm
-!        !v0linearintercept(13) = v0linearintercept(13) - 0.000000_wp    ! Msqm
-!        !v0linearintercept(14) = v0linearintercept(14) - 0.000000_wp    ! Mtm
-!        !v0linearintercept(15) = v0linearintercept(15) - 0.035676_wp    ! S1
-!        !v0linearintercept(16) = v0linearintercept(16) + 0.007598_wp    ! MU2
-!        !v0linearintercept(17) = v0linearintercept(17) - 0.043060_wp    ! NU2
-!        !v0linearintercept(18) = v0linearintercept(18) + 0.023561_wp    ! L2
-!        !v0linearintercept(19) = v0linearintercept(19) + 0.025624_wp    ! T2
-
-!        v0linearintercept(1) = v0linearintercept(1) - (rpi*2.003909_wp/180.0_wp)    ! M2
-!        v0linearintercept(2) = v0linearintercept(2) - (rpi*1.732874_wp/180.0_wp)    ! N2
-!        v0linearintercept(3) = v0linearintercept(3) - (rpi*2.065265_wp/180.0_wp)    ! 2N2
-!        v0linearintercept(4) = v0linearintercept(4) + (rpi*0.119842_wp/180.0_wp)    ! S2
-!        v0linearintercept(5) = v0linearintercept(5) - (rpi*15.689068_wp/180.0_wp)    ! K2
-!        v0linearintercept(6) = v0linearintercept(6) - (rpi*8.289390_wp/180.0_wp)    ! K1
-!        v0linearintercept(7) = v0linearintercept(7) + (rpi*1.829931_wp/180.0_wp)    ! O1
-!        v0linearintercept(8) = v0linearintercept(8) - (rpi*46.525902_wp/180.0_wp)    ! Q1
-!        v0linearintercept(9) = v0linearintercept(9) + (rpi*120.843575_wp/180.0_wp)    ! P1
-!        v0linearintercept(10) = v0linearintercept(10) + (rpi*4.011896_wp/180.0_wp)    ! M4
-!        v0linearintercept(11) = v0linearintercept(11) - (rpi*0.000000_wp/180.0_wp)    ! Mf
-!        v0linearintercept(12) = v0linearintercept(12) - (rpi*0.000000_wp/180.0_wp)    ! Mm
-!        v0linearintercept(13) = v0linearintercept(13) - (rpi*0.000000_wp/180.0_wp)    ! Msqm
-!        v0linearintercept(14) = v0linearintercept(14) - (rpi*0.000000_wp/180.0_wp)    ! Mtm
-!        v0linearintercept(15) = v0linearintercept(15) - (rpi*2.044069_wp/180.0_wp)    ! S1
-!        v0linearintercept(16) = v0linearintercept(16) + (rpi*0.435315_wp/180.0_wp)    ! MU2
-!        v0linearintercept(17) = v0linearintercept(17) - (rpi*2.467160_wp/180.0_wp)    ! NU2
-!        v0linearintercept(18) = v0linearintercept(18) + (rpi*1.349939_wp/180.0_wp)    ! L2
-!        v0linearintercept(19) = v0linearintercept(19) + (rpi*1.468170_wp/180.0_wp)    ! T2
-
-
-!        ! wave data.
-
-!        !Wave( 1) = tide(  'M2'     , 0.242297 ,    2   ,  2 , -2 ,  2 ,  0 ,  0  ,    0  ,  2   , -2   ,  0   ,  0   , 0 ,    78   )
-!        !Wave( 2) = tide(  'N2'     , 0.046313 ,    2   ,  2 , -3 ,  2 ,  1 ,  0  ,    0  ,  2   , -2   ,  0   ,  0   , 0 ,    78   )
-!        !Wave( 3) = tide( '2N2'     , 0.006184 ,    2   ,  2 , -4 ,  2 ,  2 ,  0  ,    0  ,  2   , -2   ,  0   ,  0   , 0 ,    78   )
-!        !Wave( 4) = tide(  'S2'     , 0.113572 ,    2   ,  2 ,  0 ,  0 ,  0 ,  0  ,    0  ,  0   ,  0   ,  0   ,  0   , 0 ,     0   )
-!        !Wave( 5) = tide(  'K2'     , 0.030875 ,    2   ,  2 ,  0 ,  2 ,  0 ,  0  ,    0  ,  0   ,  0   ,  0   , -2   , 0 ,   235   )
-!        !!              !           !          !        !    !    !    !    !     !       !      !      !      !      !   !         !
-!        !Wave( 6) = tide(  'K1'     , 0.142408 ,    1   ,  1 ,  0 ,  1 ,  0 ,  0  ,  -90  ,  0   ,  0   , -1   ,  0   , 0 ,   227   )
-!        !Wave( 7) = tide(  'O1'     , 0.101266 ,    1   ,  1 , -2 ,  1 ,  0 ,  0  ,  +90  ,  2   , -1   ,  0   ,  0   , 0 ,    75   )
-!        !Wave( 8) = tide(  'Q1'     , 0.019387 ,    1   ,  1 , -3 ,  1 ,  1 ,  0  ,  +90  ,  2   , -1   ,  0   ,  0   , 0 ,    75   )
-!        !Wave( 9) = tide(  'P1'     , 0.047129 ,    1   ,  1 ,  0 , -1 ,  0 ,  0  ,  +90  ,  0   ,  0   ,  0   ,  0   , 0 ,    0    )
-!        !!              !           !          !        !    !    !    !    !     !       !      !      !      !      !   !         !
-!        !Wave(10) = tide(  'M4'     , 0.000000 ,    4   ,  4 , -4 ,  4 ,  0 ,  0  ,    0  ,  4   , -4   ,  0   ,  0   , 0 ,    1    )
-!        !!              !           !          !        !    !    !    !    !     !       !      !      !      !      !   !         !
-!        !Wave(11) = tide(  'Mf'     , 0.042017 ,    0   ,  0 ,  2 ,  0 ,  0 ,  0  ,    0  , -2   ,  0   ,  0   ,  0   , 0 ,   74    )
-!        !Wave(12) = tide(  'Mm'     , 0.022191 ,    0   ,  0 ,  1 ,  0 , -1 ,  0  ,    0  ,  0   ,  0   ,  0   ,  0   , 0 ,   73    )
-!        !Wave(13) = tide(  'Msqm'   , 0.000667 ,    0   ,  0 ,  4 , -2 ,  0 ,  0  ,    0  , -2   ,  0   ,  0   ,  0   , 0 ,   74    )
-!        !Wave(14) = tide(  'Mtm'    , 0.008049 ,    0   ,  0 ,  3 ,  0 , -1 ,  0  ,    0  , -2   ,  0   ,  0   ,  0   , 0 ,   74    )
-!        !!              !           !          !        !    !    !    !    !     !       !      !      !      !      !   !         !
-!        !Wave(15) = tide(  'S1'     , 0.000000 ,    1   ,  1 ,  0 ,  0 ,  0 ,  0  ,    0  ,  0   ,  0   ,  0   ,  0   , 0 ,    0    )   
-!        !Wave(16) = tide(  'MU2'    , 0.005841 ,    2   ,  2 , -4 ,  4 ,  0 ,  0  ,    0  ,  2   , -2   ,  0   ,  0   , 0 ,   78    )
-!        !Wave(17) = tide(  'NU2'    , 0.009094 ,    2   ,  2 , -3 ,  4 , -1 ,  0  ,    0  ,  2   , -2   ,  0   ,  0   , 0 ,   78    ) 
-!        !Wave(18) = tide(  'L2'     , 0.006694 ,    2   ,  2 , -1 ,  2 , -1 ,  0  , +180  ,  2   , -2   ,  0   ,  0   , 0 ,  215    )
-!        !Wave(19) = tide(  'T2'     , 0.006614 ,    2   ,  2 ,  0 , -1 ,  0 ,  1  ,    0  ,  0   ,  0   ,  0   ,  0   , 0 ,    0    )
-
-!        !name list
-!        !  clname(1)='Q1'
-!        !  clname(2)='O1'
-!        !  clname(3)='P1'
-!        !  clname(4)='S1'
-!        !  clname(5)='K1'
-!        !  clname(6)='2N2'
-!        !  clname(7)='MU2'
-!        !  clname(8)='N2'
-!        !  clname(9)='NU2'
-!        !  clname(10)='M2'
-!        !  clname(11)='L2'
-!        !  clname(12)='T2'
-!        !  clname(13)='S2'
-!        !  clname(14)='K2'
-!        !  clname(15)='M4'
-
-!        ! ktide 8,7,9,15
-
-!        !ktide = 
-!        !8
-!        !7
-!        !9
-!        !15
-!        !6
-!        !3
-!        !16
-!        !2
-!        !17
-!        !1
-!        !18
-!        !19
-!        !4
-!        !5
-!        !10
-
-
-
-
-
-
-
-
-
-
-
-
-!        !NEMO4
-
-!!        clname(1)='Q1'
-!!        clname(2)='O1'
-!!        clname(3)='P1'
-!!        clname(4)='S1'
-!!        clname(5)='K1'
-!!        clname(6)='2N2'
-!!        clname(7)='MU2'
-!!        clname(8)='N2'
-!!        clname(9)='NU2'
-!!        clname(10)='M2'
-!!        clname(11)='L2'
-!!        clname(12)='T2'
-!!        clname(13)='S2'
-!!        clname(14)='K2'
-!!        clname(15)='M4'
-!!        ktide = [10,9,11,12,8,23,21,15,22,14,18,19,16,17,28]
-
-
-!        v0linearintercept( 1) =   0.1104402700_wp  !   Q1  8
-!        v0linearintercept( 2) =   1.1115279900_wp  !   O1  7
-!        v0linearintercept( 3) =   rpi* 345.0_wp/180.0_wp -  (rpi* 140.0_wp/180.0_wp) !   P1  9  compress4
-!        v0linearintercept( 4) =  -0.0230244122_wp  !   S1 15
-!        v0linearintercept( 5) =   6.5970532125_wp  !   K1  6
-!        v0linearintercept( 6) =   0.9305155436_wp  !  2N2  3
-!        v0linearintercept( 7) =   4.2565208698_wp  !  MU2 16
-!        v0linearintercept( 8) =   3.1186126191_wp  !   N2  2
-!        v0linearintercept( 9) =   6.5001767059_wp  !  NU2 17
-!        v0linearintercept(10) =   0.2208805500_wp   -  (rpi* 68.0_wp/180.0_wp) !   M2  1
-!        v0linearintercept(11) =   0.0000000000_wp    -  (rpi* 113.0_wp/180.0_wp) !   L2 18
-!        v0linearintercept(12) =   0.0092971808_wp  !   T2 19  + rpi/2.
-!        v0linearintercept(13) =   0.0194858941_wp  !   S2  4
-!        v0linearintercept(14) =  -2.5213114949_wp  !   K2  5
-!        v0linearintercept(15) =   3.1415926500_wp  !   M4 10
-
-
-
-!        v0linearintercept( 1) = v0linearintercept( 1) - (rpi*46.525902_wp/180.0_wp)   ! Q1
-!        v0linearintercept( 2) = v0linearintercept( 2) + (rpi*1.829931_wp/180.0_wp)    ! O1
-!        v0linearintercept( 3) = v0linearintercept( 3) + (rpi*120.843575_wp/180.0_wp)  ! P1
-!        v0linearintercept( 4) = v0linearintercept( 4) - (rpi*2.044069_wp/180.0_wp)    ! S1
-!        v0linearintercept( 5) = v0linearintercept( 5) - (rpi*8.289390_wp/180.0_wp)    ! K1
-!        v0linearintercept( 6) = v0linearintercept( 6) - (rpi*2.065265_wp/180.0_wp)    ! 2N2
-!        v0linearintercept( 7) = v0linearintercept( 7) + (rpi*0.435315_wp/180.0_wp)    ! MU2
-!        v0linearintercept( 8) = v0linearintercept( 8) - (rpi*1.732874_wp/180.0_wp)    ! N2
-!        v0linearintercept( 9) = v0linearintercept( 9) - (rpi*2.467160_wp/180.0_wp)    ! NU2
-!        v0linearintercept(10) = v0linearintercept(10) - (rpi*2.003909_wp/180.0_wp)    ! M2
-!        v0linearintercept(11) = v0linearintercept(11) + (rpi*1.349939_wp/180.0_wp)    ! L2
-!        v0linearintercept(12) = v0linearintercept(12) + (rpi*1.468170_wp/180.0_wp)    ! T2
-!        v0linearintercept(13) = v0linearintercept(13) + (rpi*0.119842_wp/180.0_wp)    ! S2
-!        v0linearintercept(14) = v0linearintercept(14) - (rpi*15.689068_wp/180.0_wp)   ! K2
-!        v0linearintercept(14) = v0linearintercept(15) + (rpi*4.011896_wp/180.0_wp)    ! M4
-
-
-
-
-
-
         DO jh = 1, kc
           IF(ln_astro_verbose .AND. lwp) WRITE(numout,*) 'astro tide_vuf 2:',jh,days_since_origin,v0linearslope(jh),v0linearintercept(ktide(jh))!,cycle_reset(jh)! ,offset(jh) 
         ENDDO
@@ -1345,26 +866,17 @@ CONTAINS
 
         tmp_name=TRIM(Wave(ktide(jh))%cname_tide)//'_utide'
         IF( iom_use(TRIM(tmp_name)) )  THEN
-        !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anau(jh) )
             CALL iom_put( TRIM(tmp_name), put(jh) )
-        !ELSE
-        !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
         ENDIF    
 
         tmp_name=TRIM(Wave(ktide(jh))%cname_tide)//'_v0tide'
         IF( iom_use(TRIM(tmp_name)) )  THEN
-        !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anav(jh) )
             CALL iom_put( TRIM(tmp_name), pvt(jh) )
-        !ELSE
-        !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
         ENDIF
 
         tmp_name=TRIM(Wave(ktide(jh))%cname_tide)//'_v0tide_origin'
         IF( iom_use(TRIM(tmp_name)) )  THEN
-        !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anav(jh) )
             CALL iom_put( TRIM(tmp_name), v0linearintercept(jh) )
-        !ELSE
-        !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
         ENDIF
 
 
@@ -1372,10 +884,7 @@ CONTAINS
 
         tmp_name=TRIM(Wave(ktide(jh))%cname_tide)//'_ftide'
         IF( iom_use(TRIM(tmp_name)) )  THEN
-        !    IF(lwp) WRITE(numout,*) "harm_ana_out: iom_put: ",TRIM(tmp_name),'; shape = ', SHAPE(anaf(jh) )
             CALL iom_put( TRIM(tmp_name), pcor(jh) )
-        !ELSE
-        !    IF(lwp) WRITE(numout,*) "harm_ana_out: not requested: ",TRIM(tmp_name)
         ENDIF
 
      END DO

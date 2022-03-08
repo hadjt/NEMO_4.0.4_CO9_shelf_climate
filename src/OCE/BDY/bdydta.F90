@@ -97,6 +97,10 @@ CONTAINS
       INTEGER ::  ii, ij, ik, igrd, ipl               ! local integers
       TYPE(OBC_DATA)         , POINTER ::   dta_alias        ! short cut
       TYPE(FLD), DIMENSION(:), POINTER ::   bf_alias
+
+      !JT
+      LOGICAL ::  verbose
+      !JT
       !!---------------------------------------------------------------------------
       !
       IF( ln_timing )   CALL timing_start('bdy_dta')
@@ -291,27 +295,29 @@ CONTAINS
          ENDIF
 
       !! JT 
-
-
-        
-        WRITE(*,*) 'JTsshw:',jbdy,nimpp,njmpp,idx_bdy(jbdy)%nblenrim(igrd)  
-
-        igrd = 1
-        DO ib = 1, idx_bdy(jbdy)%nblenrim(igrd)  
-           ii   = idx_bdy(jbdy)%nbi(ib,igrd)
-           ij   = idx_bdy(jbdy)%nbj(ib,igrd)
-           WRITE(*,*) 'JTsshv:',jbdy,nimpp+ii,njmpp+ij,dta_alias%ssh(ib) , tmask(ii,ij,1), sshn(ii,ij)
-        END DO
-
-
-      !! JT I think this need to go here. The previous location didn't have an affect on the model. 
-      !       I think when time splitting, ln_dynspg_ts, you weren't seeing this effect, so trying it before the time splitting. 
-      !
-      ! 
-      ! davbyr - add a shift to the boundary + free elevation Enda, JT from NEMO RAN 3.6
+        verbose = .FALSE.
 
         
-         IF(lwp) WRITE(numout,*) 'bdydta nambdy_ssh: lneed_ssh',kt, jbdy, dta_bdy(jbdy)%lneed_ssh, idx_bdy(jbdy)%nblenrim(igrd) 
+        if ( verbose ) THEN
+
+            WRITE(*,*) 'JTsshw:',jbdy,nimpp,njmpp,idx_bdy(jbdy)%nblenrim(igrd)  
+
+            igrd = 1
+            DO ib = 1, idx_bdy(jbdy)%nblenrim(igrd)  
+               ii   = idx_bdy(jbdy)%nbi(ib,igrd)
+               ij   = idx_bdy(jbdy)%nbj(ib,igrd)
+               if ( verbose ) WRITE(*,*) 'JTsshv:',jbdy,nimpp+ii,njmpp+ij,dta_alias%ssh(ib) , tmask(ii,ij,1), sshn(ii,ij)
+            END DO
+
+            !! JT I think this need to go here. The previous location didn't have an affect on the model. 
+            !       I think when time splitting, ln_dynspg_ts, you weren't seeing this effect, so trying it before the time splitting. 
+            !
+            ! 
+            ! davbyr - add a shift to the boundary + free elevation Enda, JT from NEMO RAN 3.6
+
+
+             IF(lwp .AND. verbose) WRITE(numout,*) 'bdydta nambdy_ssh: lneed_ssh',kt, jbdy, dta_bdy(jbdy)%lneed_ssh, idx_bdy(jbdy)%nblenrim(igrd) 
+         ENDIF
 
 
          IF( dta_bdy(jbdy)%lneed_ssh ) THEN
@@ -325,19 +331,19 @@ CONTAINS
             END DO
 
              IF( .NOT. dta_bdy(jbdy)%lforced_ssh ) THEN
-                 WRITE(*,*) 'bdydta nambdy_ssh: NOT lforced_ssh == True',kt, jbdy, dta_bdy(jbdy)%lforced_ssh
+                 if ( verbose ) WRITE(*,*) 'bdydta nambdy_ssh: NOT lforced_ssh == True',kt, jbdy, dta_bdy(jbdy)%lforced_ssh
 
                  igrd = 1
                  DO ib = 1, idx_bdy(jbdy)%nblenrim(igrd)   ! ssh is used only on the rim
                     ii   = idx_bdy(jbdy)%nbi(ib,igrd)
                     ij   = idx_bdy(jbdy)%nbj(ib,igrd)
-                    WRITE(*,*) 'JTssh:',jbdy, nproc,narea,ii,ij, dta_alias%ssh(ib), dta_bdy(jbdy)%ssh(ib), sshn(ii,ij) * tmask(ii,ij,1), sshn(ii,ij), tmask(ii,ij,1)
+                    if ( verbose ) WRITE(*,*) 'JTssh:',jbdy, nproc,narea,ii,ij, dta_alias%ssh(ib), dta_bdy(jbdy)%ssh(ib), sshn(ii,ij) * tmask(ii,ij,1), sshn(ii,ij), tmask(ii,ij,1)
                     dta_alias%ssh(ib) = sshn(ii,ij) * tmask(ii,ij,1)
                     dta_bdy(jbdy)%ssh(ib) = sshn(ii,ij) * tmask(ii,ij,1)
                  END DO
 
              ELSE
-                 WRITE(*,*) 'bdydta nambdy_ssh: NOT lforced_ssh == False',kt, jbdy, dta_bdy(jbdy)%lforced_ssh
+                 if ( verbose ) WRITE(*,*) 'bdydta nambdy_ssh: NOT lforced_ssh == False',kt, jbdy, dta_bdy(jbdy)%lforced_ssh
              END IF   !.NOT. dta_bdy(jbdy)%lforced_ssh 
 
          END IF !dta_bdy(jbdy)%lneed_ssh
