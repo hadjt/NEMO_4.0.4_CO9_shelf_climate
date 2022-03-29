@@ -97,7 +97,7 @@ MODULE diadct
    
   INTEGER, PARAMETER :: nb_class_max  = 12   ! maximum number of classes, i.e. depth levels or density classes
   INTEGER, PARAMETER :: nb_sec_max    = 100  ! maximum number of sections
-  INTEGER, PARAMETER :: nb_point_max  = 375  ! maximum number of points in a single section
+  INTEGER, PARAMETER :: nb_point_max  = 3000 !375  ! maximum number of points in a single section
   INTEGER, PARAMETER :: nb_type_class       = 14   ! types of calculations, i.e. pos transport, neg transport, heat transport, salt transport
   INTEGER, PARAMETER :: nb_3d_vars    = 5
   INTEGER, PARAMETER :: nb_2d_vars    = 2
