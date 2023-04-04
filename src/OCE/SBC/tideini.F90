@@ -59,7 +59,7 @@ CONTAINS
                   &     ln_tide_ramp, rn_scal_load, rdttideramp, dn_love_number, clname
       !!----------------------------------------------------------------------
 
-
+      dn_love_number = 0.7 ! JT Set a default value, otherwise set to 0 if not in name list
       
       DO jk = 1, jpmax_harmo
           clname(jk) = ''
