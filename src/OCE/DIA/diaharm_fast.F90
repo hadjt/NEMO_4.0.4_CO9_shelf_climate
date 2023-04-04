@@ -37,7 +37,7 @@ MODULE diaharm_fast
 
    !! *  Routine accessibility
    PUBLIC dia_harm_fast                                      ! routine called in step.F90 module
-   LOGICAL, PUBLIC, PARAMETER :: lk_diaharm_fast  = .TRUE.   ! to be run or not
+   LOGICAL, PUBLIC :: lk_diaharm_fast  = .TRUE.   ! to be run or not
    LOGICAL, PUBLIC :: lk_diaharm_2D   ! = .TRUE.   ! to run 2d
    LOGICAL, PUBLIC :: lk_diaharm_3D   ! = .TRUE.   ! to run 3d
 
@@ -411,7 +411,7 @@ CONTAINS
 902   IF( ios > 0 ) CALL ctl_nam ( ios , 'nam_diaharm_fast in configuration namelist' )
       IF(lwm) WRITE ( numond, nam_diaharm_fast )
 
-
+      lk_diaharm_fast = ln_diaharm_fast
       !
       IF(lwp) THEN
          WRITE(numout,*) 'Tidal diagnostics_fast'
